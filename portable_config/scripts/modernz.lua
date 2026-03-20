@@ -1,4 +1,4 @@
--- ModernZ v0.3.1 (https://github.com/Samillion/ModernZ)
+-- ModernZ v0.3.1 fix1 for MpvIptv (https://github.com/Samillion/ModernZ)
 --
 -- This script is a derivative of the original mpv-osc-modern by maoiscat
 -- and subsequent forks:
@@ -227,6 +227,8 @@ local user_opts = {
     -- playlist button mouse actions
     playlist_mbtn_left_command = "script-binding select/select-playlist",
     playlist_mbtn_right_command = "script-binding select/menu",
+    playlist_mbtn_shift_command = "script-binding select/menu",
+    playlist_mbtn_ctrl_command = "script-binding select/menu",
 
     -- volume mouse actions
     vol_ctrl_mbtn_left_command = "no-osd cycle mute",
@@ -2512,6 +2514,14 @@ local function bind_buttons(element_name, use_down)
     if command ~= nil and command ~= "" and command ~= "ignore" then
         elements[element_name].eventresponder["shift+mbtn_left_down"] = function() mp.command(command) end
     end
+    local command = user_opts[element_name .. "_mbtn_shift_command"]
+    if command ~= nil and command ~= "" and command ~= "ignore" then
+        elements[element_name].eventresponder["shift+mbtn_left_down"] = function() mp.command(command) end
+    end
+    local command = user_opts[element_name .. "_mbtn_ctrl_command"]
+    if command ~= nil and command ~= "" and command ~= "ignore" then
+        elements[element_name].eventresponder["ctrl+mbtn_left_down"] = function() mp.command(command) end
+    end
     for _, button in ipairs({"wheel_up", "wheel_down"}) do
         local command = user_opts[element_name .. "_" .. button .. "_command"]
         if command ~= nil and command ~= "" and command ~= "ignore" then
@@ -2646,7 +2656,7 @@ local function osc_init()
     ne.content = function ()
         local title = mp.command_native({"expand-text", user_opts.title})
         title = title:gsub("\n", " ")
-        return title ~= "" and mp.command_native({"escape-ass", title}) or "mpv"
+        return title ~= "" and title ~= "(unavailable)" and mp.command_native({"escape-ass", title}) or "" --"mpv"
     end
     bind_buttons("title")
 
@@ -3716,7 +3726,7 @@ end)
 observe_cached("border", request_init_resize)
 observe_cached("title-bar", request_init_resize)
 observe_cached("window-maximized", request_init_resize)
-observe_cached("idle-active", request_tick)
+--observe_cached("idle-active", request_tick)
 mp.observe_property("user-data/mpv/console/open", "bool", function(_, val)
     if val and user_opts.visibility == "auto" and not user_opts.showonselect then
         osc_visible(false)
@@ -3768,6 +3778,8 @@ mp.set_key_bindings({
                             function() process_event("mbtn_left", "down")  end},
     {"shift+mbtn_left",     function() process_event("shift+mbtn_left", "up") end,
                             function() process_event("shift+mbtn_left", "down")  end},
+    {"ctrl+mbtn_left",      function() process_event("ctrl+mbtn_left", "up") end,
+                            function() process_event("ctrl+mbtn_left", "down")  end},
     {"mbtn_right",          function() process_event("mbtn_right", "up") end,
                             function() process_event("mbtn_right", "down")  end},
     {"shift+mbtn_right",    function() process_event("shift+mbtn_right", "up") end,
@@ -3779,6 +3791,7 @@ mp.set_key_bindings({
     {"wheel_down",          function() process_event("wheel_down", "press") end},
     {"mbtn_left_dbl",       "ignore"},
     {"shift+mbtn_left_dbl", "ignore"},
+    {"ctrl+mbtn_left_dbl",  "ignore"},
     {"mbtn_right_dbl",      "ignore"},
 }, "input", "force")
 mp.enable_key_bindings("input")
