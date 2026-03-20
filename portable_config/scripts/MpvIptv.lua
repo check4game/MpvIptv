@@ -350,7 +350,13 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
             --global_catchup_type = get_catchup_type(line)
 
         elseif line:startswith("#EXTINF:") then
+            
+            line = line:gsub("%s+", " ") -- double space
+
+            line = line:gsub(" ,", ",") -- fix https://smolnp.github.io
+
             channel_name = line:match('.*",%s*(.*)') or "N/A"
+
             channel_name = string.normalize_display_name(htmlEntities.decode(channel_name)):gsub("4К", "4K") -- русская буква К
 
             channel_name = channel_name:gsub(" BY$", ""):gsub(" (BY)$", "")
@@ -406,7 +412,7 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
                     local isIPTV = not (film_year or film_genres or film_resolution or not channel_tvg_id)
 
                     if channel_logo_id then --fix, real from url
-                        channel_logo_id = string.find_and_extract(channel_logo_id, line):gsub("_", "-")
+                        channel_logo_id = string.find_and_extract(channel_logo_id:urldecode(), line):gsub("_", "-")
                     end
 
                     local urls = {}
@@ -1973,7 +1979,6 @@ mp.add_forced_key_binding("g-c", "select-channel-list-self", function ()
 
             local bResult = hide_menu()
 
-            --local prompt = string.format("%s: ", menu_state.group_name)
             local prompt = "Выбор потока из группы: "
 
             input.select({
@@ -1995,7 +2000,7 @@ mp.add_forced_key_binding("g-c", "select-channel-list-self", function ()
                         current_playlist = {}
 
                         for i, channel in ipairs(channels) do
-                            table.insert(current_playlist, {title = items[i], isGroupList = true})
+                            table.insert(current_playlist, {title = items[i], tvg_id=channel.tvg_id, isGroupList = true})
                             mp.commandv("loadfile", channel.urls[1].url, "append")
                         end
                     
@@ -2061,39 +2066,37 @@ mp.add_forced_key_binding("g-p", "select-play-list-self", function ()
     local prompt = "Выбор программы передач: "
 
     if current_playlist[1].isGroupList then
-
         prompt = "Выбор из списка проигрывания: "
-
     elseif not current_playlist[1].isIPTV then
-
         if current_playlist[1].title:startswith("S") then
             prompt = "Выбор серии в сезоне: "
         else
             prompt = "Выбор разрешения фильма: "
         end
-
     end
     
-    local title = nil
+    local bResult = hide_menu()
 
     input.select({
         prompt = prompt,
         items = playlist,
         default_item = default_item,
         closed = function ()
-            if not title then
+            if prompt and bResult then
+                show_menu()
+            end
+            if prompt then
                 show_osd_media_info(15)
             end
         end,
         submit = function (index)
-            --title = current_playlist[index].title
-            --mp.commandv("playlist-play-index", index - 1)
-
+            prompt = nil
             if current_playlist[index].isGroupList then
-                current_channel.idx = index
+                play_channel(menu_state.group_name, index, current_playlist[index].tvg_id)
+            else
+                --current_channel.idx = index
+                PlayPlayListEntry(index - 1)
             end
-
-            PlayPlayListEntry(index - 1)
         end,
     })
 
