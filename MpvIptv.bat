@@ -128,6 +128,9 @@ set url=https://raw.githubusercontent.com/check4game/MpvIptv/refs/heads/main/por
 
 set configPath=%~dp0portable_config
 
+if not exist "!configPath!\temp" (
+	mkdir "!configPath!\temp" > nul
+)
 if not exist "!configPath!\fonts" (
 	mkdir "!configPath!\fonts" > nul
 )
