@@ -92,7 +92,7 @@ function MpvIptvUtils.ReadAllStrings(file_path)
     local file, err = io.open(file_path, "r")
     if not file then
         msg.error("Ошибка открытия файла: " .. (err or "неизвестно"))
-        return false
+        return {}
     end
     
     lines = {}
