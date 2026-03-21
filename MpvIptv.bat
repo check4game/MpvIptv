@@ -44,7 +44,7 @@ if (-not (Test-Path "!binPath!\7za.exe")) {^
 %exec% -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& {!7ZA!}"
 
 if exist "!binPath!\!7zaZip!" (
-	%exec% -Command "& { Write-Host "Extract 7za.exe from !7zaZip!" -ForegroundColor Green; }"
+	%exec% -Command "& { Write-Host "Extracting 7za.exe from !7zaZip!" -ForegroundColor Green; }"
 	"!binPath!\7zr.exe" e -y "!binPath!\!7zaZip!" 7za.exe -o"!binPath!" > nul
 	del /Q "!binPath!\!7zaZip!" > nul
 )
@@ -70,7 +70,7 @@ if not exist "!binPath!\curl.exe" (
 )
 
 if exist "!binPath!\!curlZip!" (
-	%exec% -Command "& { Write-Host "Extract curl.exe from !curlZip!" -ForegroundColor Green; }"
+	%exec% -Command "& { Write-Host "Extracting curl.exe from !curlZip!" -ForegroundColor Green; }"
 	"!binPath!\7za.exe" e -r -y "!binPath!\!curlZip!" curl.exe -o"!binPath!" > nul
 	del /Q "!binPath!\!curlZip!" > nul
 )
@@ -81,17 +81,16 @@ if not exist "!binPath!\curl.exe" (
     exit /b 1
 )
 
-set CHECKVERSION=$false
-
+set MVPEXIST=$false
 if exist "%~dp0\mpv.com" if exist "%~dp0\mpv.exe" (
-set CHECKVERSION=$true
+set MVPEXIST=$true
 )
 
 set MPV=^
 $filename = '';^
 $downloadUrl = '';^
 $apiUrl = 'https://api.github.com/repos/zhongfly/mpv-winbuild/releases/latest';^
-Write-Host "Downloading" $apiUrl -ForegroundColor Green;^
+Write-Host "Checking" $apiUrl -ForegroundColor Green;^
 $json = Invoke-WebRequest $apiUrl -MaximumRedirection 0 -ErrorAction Ignore -UseBasicParsing -UserAgent "!useragent!" ^| ConvertFrom-Json;^
 $filename = $json.assets ^| where { $_.name -Match 'mpv-x86_64-[0-9]{8}' } ^| Select-Object -ExpandProperty name;^
 $downloadUrl = $json.assets ^| where { $_.name -Match 'mpv-x86_64-[0-9]{8}' } ^| Select-Object -ExpandProperty browser_download_url;^
@@ -99,7 +98,7 @@ if ($filename -is [array]) {^
 $filename = $filename[0];^
 $downloadUrl = $downloadUrl[0];^
 }^
-if (!CHECKVERSION!) {^
+if (!MVPEXIST!) {^
 	$stripped = .\mpv --no-config ^| select-string "mpv" ^| select-object -First 1;^
 	$bool = $stripped -match '-g([a-z0-9-]{7})';^
 	$l=$matches[1];^
@@ -118,9 +117,9 @@ if (!CHECKVERSION!) {^
 %exec% -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& {!MPV!}"
 
 if exist "!binPath!\mpv.last.7z" (
-	%exec% -Command "& { Write-Host "Extract mpv.exe from mpv.last.7z" -ForegroundColor Green; }"
+	%exec% -Command "& { Write-Host "Extracting mpv.exe from mpv.last.7z" -ForegroundColor Green; }"
 	"!binPath!\7za.exe" e -r -y "!binPath!\mpv.last.7z" mpv.exe -o"%~dp0" > nul
-	%exec% -Command "& { Write-Host "Extract mpv.com from mpv.last.7z" -ForegroundColor Green; }"
+	%exec% -Command "& { Write-Host "Extracting mpv.com from mpv.last.7z" -ForegroundColor Green; }"
 	"!binPath!\7za.exe" e -r -y "!binPath!\mpv.last.7z" mpv.com -o"%~dp0" > nul
 	del /Q "!binPath!\mpv.last.7z" > nul
 )
@@ -142,10 +141,8 @@ if not exist "!configPath!\script-opts" (
 if not exist "!configPath!\MpvIptv.json" (
 	call :DownloadFile "MpvIptv.json"
 )
-if not exist "!configPath!\mpv.conf" (
-	call :DownloadFile "mpv.conf"
-)
 
+call :DownloadFile "mpv.conf"
 call :DownloadFile "MpvIptv.mp4"
 call :DownloadFile "fonts/modernz-icons.ttf"
 set scripts=modernz.lua MpvIptv.lua pip_lite.lua
