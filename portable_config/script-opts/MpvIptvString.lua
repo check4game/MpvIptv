@@ -1,3 +1,4 @@
+local msg = require 'mp.msg'
 
 function string.startswith(str, prefix)
     if prefix then
@@ -73,8 +74,19 @@ function string.epg_time_to_seconds(datetime)
     return seconds
 end
 
+local hex_to_char = function(x)
+  return string.char(tonumber(x, 16))
+end
+
+function string.urldecode(url)
+    url = url:gsub("+", " ")
+    url = url:gsub("%%(%x%x)", hex_to_char)
+  return url
+end
+
 function string.find_and_extract(word, url)
     -- Просто ищем word и всё что после него до /
+    --msg.warn(word)
     return url:match(word .. "[^/]*") or word
 end
 
