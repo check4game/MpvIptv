@@ -179,11 +179,11 @@ function parse_epg(epg_file_name, epg_file_path)
 
         local title = programme:match('<title[^>]*>(.-)</title>') or "N/A"
         
-        title = htmlEntities.decode(title):gsub("^⋗ ", "")
+        title = htmlEntities.decode(title):gsub("^⋗ ", ""):gsub("\\n", " "):gsub("%s+", " ") -- double space
 
         local desc = programme:match('<desc[^>]*>(.-)</desc>') or "N/A"
 
-        desc = htmlEntities.decode(desc)
+        desc = htmlEntities.decode(desc):gsub("\\n", " "):gsub("%s+", " ") -- double space
 
         if not epg_programmes[id] then epg_programmes[id] = {} end
 
@@ -772,12 +772,8 @@ function load_m3u_epg()
         result = parse_epg(MpvIptvUtils.GetFileName(entry.epgUrl, true), MpvIptvUtils.GetFilePath(entry.epgUrl, true))
     end
 
-    if result then
-        if entry.name then
-            --set_window_title(string.format("Playlist '%s' / %s загружен", entry.name, MpvIptvUtils.GetFileName(entry.url)))
-        else
-            --set_window_title(string.format("Playlist '%s' загружен", MpvIptvUtils.GetFileName(entry.url)))
-        end
+    if result and GLOBAL_IS_IPTV then
+        map_channels_to_programme()
     end
 
     return result
@@ -842,78 +838,56 @@ function prepare_channels_pagination(group_name)
     menu_state.channel_page = 1
 end
 
-function map_channel_to_programme(channel_info)
-
-    if not channel_info.id and channel_info.channel.tvg_id then
-
-        channel_info.symbol = " "
-
-        if not channel_info.id and channel_info.channel.tvg_id then
-            if epg_programmes[channel_info.channel.tvg_id] then
-                channel_info.id = channel_info.channel.tvg_id
-                channel_info.symbol = " " -- нашли по tvg_id
+function map_channels_to_programme()
+   for _, channels in pairs(channel_groups) do
+        if type(channels) == 'table' then
+            for _, channel in ipairs(channels) do
+                map_channel_to_programme(channel)
             end
         end
+    end
+end
 
-        if not channel_info.id and channel_info.channel.logo_id then
-            if epg_programmes[channel_info.channel.logo_id] then
-                channel_info.id = channel_info.channel.logo_id
-                channel_info.symbol = "!" -- нашли по logo_id
-            end
-        end
+function map_channel_to_programme(channel)
 
-        if not channel_info.id then
-            local display_lower = string.normalize_display_name(MpvIptvUtf8.lower(channel_info.channel.name))
-            channel_info.id = epg_channels[display_lower] or epg_channels[display_lower:gsub("[%s-]", "")]
+    channel.symbol = " "
 
-            if channel_info.id and epg_programmes[channel_info.id] then
-                channel_info.symbol = "⋗" -- нашли по имени
-            else
-                channel_info.id = nil
-            end
-        end
+    local tvg_id = nil
 
-            --display_lower = display_lower:gsub(" premium%+$", "")             
---[[
-            channel_info.id = channel_info.id
-                or epg_channels[display_lower]
-                or epg_channels[display_lower:gsub(" hd ", " ")]
-                or epg_channels[display_lower:gsub(" vip ", " ")]
-                or epg_channels[display_lower:gsub("s$", "")]
-                or epg_channels[display_lower:gsub(" hdr$", " hd")] -- BCU FilMystic HDR & BCU FilMystic HD
-
-                or epg_channels[display_lower .. " tv"]
-                or epg_channels[display_lower .. " 4k"]
-                or epg_channels[display_lower .. " hd"]
-
-                or epg_channels[display_lower:gsub("[%s-]", "")] -- пробелы
-                or epg_channels[display_lower:gsub("cgtn ", "cgtn-"):gsub(" hd$", "")] -- CGTN-Русский HD
-
-                or epg_channels[display_lower:gsub("%s", ""):gsub("hd$", "")] -- Detective Jam HD
-
-                or epg_channels[display_lower:gsub(" hd ", " "):gsub(" hd$", "")] -- Мосфильм. Золотая коллекция HD (+4) HD
-
-                or epg_channels[display_lower:gsub(" live hd$", ".live")] -- Соловьев.Live
-                
-                or epg_channels[display_lower:gsub(" hd$", " fhd")] -- SKY HIGH BEYOND S FHD
-                or epg_channels[display_lower:gsub("тв$", "tv")] -- ЭхоТВ
-
-                or epg_channels[display_lower:gsub(" hd$", "")]
-                or epg_channels[display_lower:gsub(" teens$", "")]
-                or epg_channels[display_lower:gsub(" uhd$", "")]
-                or epg_channels[display_lower:gsub(" tv$", "")] -- Dorcel TV
-]]
-
-        if channel_info.channel.catchup_type < 1 then
-            channel_info.symbol = channel_info.symbol .. " \u{2005}" --FOUR-PER-EM SPACE
-        elseif channel_info.channel.catchup_type < 4 then
-            channel_info.symbol = channel_info.symbol .. "↺"
-        else
-            channel_info.symbol = channel_info.symbol .. channel_info.channel.catchup_type .. "\u{2005}"
+    if not tvg_id and channel.tvg_id then
+        if epg_programmes[channel.tvg_id] then
+            tvg_id = channel.tvg_id
+            channel.symbol = " " -- нашли по tvg_id
         end
     end
 
-    return channel_info
+    if not tvg_id and channel.logo_id then
+        if epg_programmes[channel.logo_id] then
+            tvg_id = channel.logo_id
+            channel.symbol = "!" -- нашли по logo_id
+        end
+    end
+
+    if not tvg_id then
+        local display_lower = string.normalize_display_name(MpvIptvUtf8.lower(channel.name))
+        tvg_id = epg_channels[display_lower] or epg_channels[display_lower:gsub("[%s-]", "")]
+
+        if tvg_id and epg_programmes[tvg_id] then
+            channel.symbol = "⋗" -- нашли по имени
+        else
+            tvg_id = nil
+        end
+    end
+
+    if channel.catchup_type < 1 then
+        channel.symbol = channel.symbol .. " \u{2005}" --FOUR-PER-EM SPACE
+    elseif channel.catchup_type < 4 then
+        channel.symbol = channel.symbol .. "↺"
+    else
+        channel.symbol = channel.symbol .. channel.catchup_type .. "\u{2005}"
+    end
+
+    channel.tvg_id = tvg_id
 end
 
 function get_current_page_channels(group_name, page)
@@ -933,14 +907,12 @@ function get_current_page_channels(group_name, page)
         local max_len = 0
         
         for i = start_idx, end_idx do
+
             local channel = menu_state.current_group_channels[i]
 
             max_len = math.max(max_len, MpvIptvUtf8.len(channel.name))
-
-            local info = { channel = channel, symbol = "  ", id = nil }
             
-            table.insert(page_channels, map_channel_to_programme(info))
-
+            table.insert(page_channels, channel)
         end
         
         cache = { page_channels=page_channels, start_idx=start_idx, end_idx = end_idx, max_len = max_len }
@@ -1158,14 +1130,14 @@ function show_channels_menu(group_name, page)
 
     local ctime = os.time()
 
-    for i, channel_info in ipairs(page_channels) do
+    for i, channel in ipairs(page_channels) do
 
-        local display_name = channel_info.channel.name
+        local display_name = channel.name
         local global_index = start_idx + i - 1
         local label = get_item_label(i, global_index)
 
-        if channel_info.channel.film_year then
-            --display_name = display_name .. "/" .. channel_info.channel.film_year
+        if channel.film_year then
+            --display_name = display_name .. "/" .. channel.film_year
         end
 
         local bRtl = MpvIptvUtf8.IsRtl(display_name)
@@ -1187,9 +1159,9 @@ function show_channels_menu(group_name, page)
 
         local programme = nil
 
-        if channel_info.id and epg_programmes[channel_info.id] then
-            programme = epg_programmes[channel_info.id]
-        elseif channel_info.channel.isIPTV then
+        if channel.tvg_id and epg_programmes[channel.tvg_id] then
+            programme = epg_programmes[channel.tvg_id]
+        elseif channel.isIPTV then
             programme = programme_generator('===')
         end
 
@@ -1211,7 +1183,7 @@ function show_channels_menu(group_name, page)
                         --padding = bRtl and (padding .. "\u{2006}\u{2006}") or padding
 
                         cprogramme = makeup(DEFAULT_FONT_SIZE,
-                            string.format("%s%s %s %s", padding, channel_info.symbol,
+                            string.format("%s%s %s %s", padding, channel.symbol,
                             string.format("%02d:%02d-%02d:%02d", start.hour, start.min, stop.hour, stop.min),
                             info.title:gsub("^⋗ ", "")))
                         break
@@ -1229,7 +1201,7 @@ function show_channels_menu(group_name, page)
 
                     cprogramme = makeup(DEFAULT_FONT_SIZE,
                         string.format("%s%s %s %s",
-                        padding, channel_info.symbol,
+                        padding, channel.symbol,
                         string.format("%02d/%02d/%04d, %02d:%02d-%02d:%02d", start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min),
                         info.title:gsub("^⋗ ", "")))
                 end
@@ -1320,7 +1292,7 @@ function show_channels_menu(group_name, page)
 
                         local play_channel = function(mouse)
                             if IsClickValid(mouse) then
-                                play_channel(group_name, global_index, channel_info.id)
+                                play_channel(group_name, global_index, channel.tvg_id)
                             end
                         end
 
@@ -1342,15 +1314,15 @@ function show_channels_menu(group_name, page)
     end
 
     -- Привязываем клавиши
-    bind_items_keys(page_channels, start_idx, function(global_index, channel_info)
+    bind_items_keys(page_channels, start_idx, function(global_index, channel)
         current_channel.programme_idx = 0
-        play_channel(group_name, global_index, page_channels[global_index - start_idx + 1].id)
+        play_channel(group_name, global_index, page_channels[global_index - start_idx + 1].tvg_id)
     end)
     
     local play_channel = function(mouse)
         if IsClickValid(mouse) and current_channel.idx >= current_channel.start_idx and current_channel.idx <= current_channel.end_idx then
             current_channel.programme_idx = 0
-            play_channel(group_name, current_channel.idx, page_channels[current_channel.idx - start_idx + 1].id)
+            play_channel(group_name, current_channel.idx, page_channels[current_channel.idx - start_idx + 1].tvg_id)
         end
     end
     
@@ -1537,12 +1509,7 @@ function play_channel(group_name, channel_index, programme_id)
 
         local programme = {}
 
-        if channel.isIPTV then
-            set_window_title(string.format("%s/%s", current_channel.group_name, current_channel.name))
-        else
-            --set_window_title(current_channel.group_name)
-            set_window_title(string.format("%s/%s", current_channel.group_name, current_channel.name))
-        end
+        set_window_title(string.format("%s/%s", current_channel.group_name, current_channel.name))
 
         if programme_id and epg_programmes[programme_id] then
 
@@ -2092,9 +2059,10 @@ mp.add_forced_key_binding("g-p", "select-play-list-self", function ()
         submit = function (index)
             prompt = nil
             if current_playlist[index].isGroupList then
+                --current_channel.idx = index
+                current_channel.programme_idx = 0
                 play_channel(menu_state.group_name, index, current_playlist[index].tvg_id)
             else
-                --current_channel.idx = index
                 PlayPlayListEntry(index - 1)
             end
         end,
@@ -2115,10 +2083,13 @@ mp.command_native(overlay_add_args)
 set_window_title()
 
 msg.warn(APP_USER_AGENT)
-mp.set_property("loop-file", "no")
+mp.set_property("loop-file", "inf")
 
---mp.commandv("loadfile", mp.command_native({ "expand-path", "~~/30c4e2cc-8b20-479e-89f8-28677973fb24.mp4" }), "replace", 0, "start=0")
---mp.commandv("script-message-to", "modernz", "osc-show")
+--https://ezremove.ai/video-watermark-remover/
+mp.commandv("loadfile", mp.command_native({ "expand-path", "~~/MpvIptv.mp4" }), "replace", 0, "start=0")
+
+mp.commandv("script-message-to", "modernz", "osc-hide")
+
 
 IPTV_JSON_CONFIG = MpvIptvUtils.LoadJsonFile(IPTV_JSON_CONFIG_FILE)
 MpvIptvUtils.LoadAndUpdatePlaylistAndEpg(IPTV_JSON_CONFIG, IPTV_JSON_CONFIG_FILE)
