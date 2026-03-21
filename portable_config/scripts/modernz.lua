@@ -227,7 +227,7 @@ local user_opts = {
     -- playlist button mouse actions
     playlist_mbtn_left_command = "script-binding select/select-playlist",
     playlist_mbtn_right_command = "script-binding select/menu",
-    playlist_mbtn_shift_command = "script-binding select/menu",
+    playlist_mbtn_mid_command = "script-binding select/menu",
     playlist_mbtn_ctrl_command = "script-binding select/menu",
 
     -- volume mouse actions
@@ -268,10 +268,12 @@ local user_opts = {
     -- playlist skip buttons mouse actions
     playlist_prev_mbtn_left_command = "playlist-prev",
     playlist_prev_mbtn_mid_command = "show-text ${playlist} 3000",
+    playlist_prev_mbtn_ctrl_command = "show-text ${playlist} 3000",
     playlist_prev_mbtn_right_command = "script-binding select/select-playlist",
 
     playlist_next_mbtn_left_command = "playlist-next",
     playlist_next_mbtn_mid_command = "show-text ${playlist} 3000",
+    playlist_next_mbtn_ctrl_command = "show-text ${playlist} 3000",
     playlist_next_mbtn_right_command = "script-binding select/select-playlist",
 
     -- fullscreen button mouse actions
@@ -2511,10 +2513,6 @@ local function bind_buttons(element_name, use_down)
         end
     end
     local command = user_opts[element_name .. "_mbtn_mid_command"]
-    if command ~= nil and command ~= "" and command ~= "ignore" then
-        elements[element_name].eventresponder["shift+mbtn_left_down"] = function() mp.command(command) end
-    end
-    local command = user_opts[element_name .. "_mbtn_shift_command"]
     if command ~= nil and command ~= "" and command ~= "ignore" then
         elements[element_name].eventresponder["shift+mbtn_left_down"] = function() mp.command(command) end
     end
