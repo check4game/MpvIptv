@@ -91,6 +91,7 @@ set MPV=^
 $filename = '';^
 $downloadUrl = '';^
 $apiUrl = 'https://api.github.com/repos/zhongfly/mpv-winbuild/releases/latest';^
+Write-Host "Downloading" $apiUrl -ForegroundColor Green;^
 $json = Invoke-WebRequest $apiUrl -MaximumRedirection 0 -ErrorAction Ignore -UseBasicParsing -UserAgent "!useragent!" ^| ConvertFrom-Json;^
 $filename = $json.assets ^| where { $_.name -Match 'mpv-x86_64-[0-9]{8}' } ^| Select-Object -ExpandProperty name;^
 $downloadUrl = $json.assets ^| where { $_.name -Match 'mpv-x86_64-[0-9]{8}' } ^| Select-Object -ExpandProperty browser_download_url;^
@@ -124,4 +125,49 @@ if exist "!binPath!\mpv.last.7z" (
 	del /Q "!binPath!\mpv.last.7z" > nul
 )
 
+set url=https://raw.githubusercontent.com/check4game/MpvIptv/refs/heads/main/portable_config
+
+set configPath=%~dp0portable_config
+
+if not exist "!configPath!\fonts" (
+	mkdir "!configPath!\fonts" > nul
+)
+if not exist "!configPath!\scripts" (
+	mkdir "!configPath!\scripts" > nul
+)
+if not exist "!configPath!\script-opts" (
+	mkdir "!configPath!\script-opts" > nul
+)
+
+if not exist "!configPath!\MpvIptv.json" (
+	call :DownloadFile "MpvIptv.json"
+)
+if not exist "!configPath!\mpv.conf" (
+	call :DownloadFile "mpv.conf"
+)
+
+call :DownloadFile "MpvIptv.mp4"
+call :DownloadFile "fonts/modernz-icons.ttf"
+set scripts=modernz.lua MpvIptv.lua pip_lite.lua
+for %%f in (%scripts%) do (
+	call :DownloadFile "scripts/%%f"
+)
+set script-opts=dkjson.lua htmlEntities.lua modernz-locale.json MpvIptvGroups.lua MpvIptvString.lua MpvIptvUtf8.lua MpvIptvUtils.lua sha2.lua
+for %%f in (%script-opts%) do (
+	call :DownloadFile "script-opts/%%f"
+)
+
 pause
+goto :eof
+
+:DownloadFile
+if exist "!configPath!\%~1" (
+	%exec% -Command "& { Write-Host "Updating %~1" -ForegroundColor Green; }"
+	"!binPath!\curl.exe" --compressed --no-progress-meter -RLo "!configPath!\%~1" --fail -z "!configPath!\%~1" "!url!/%~1"
+) else (
+	%exec% -Command "& { Write-Host "Downloading %~1" -ForegroundColor Green; }"
+	"!binPath!\curl.exe" --compressed --no-progress-meter -RLo "!configPath!\%~1" --fail "!url!/%~1"
+)
+
+exit /b 1
+goto :eof
