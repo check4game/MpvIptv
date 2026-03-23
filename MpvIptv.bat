@@ -2,13 +2,17 @@
 @setlocal enabledelayedexpansion
 pushd %~dp0
 
-set binDir=bin
 set useragent=MpvIptv-Updater
+
 set 7zrUrl=https://www.7-zip.org/a/7zr.exe
 set 7zaUrl=https://www.7-zip.org/a/7z2600-extra.7z
 set curlUrl=https://curl.se/windows/dl-8.19.0_4/curl-8.19.0_4-win64-mingw.zip
 
-set binPath=%~dp0!binDir!
+set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/refs/heads/main/portable_config
+
+set curPath=%~dp0
+set binPath=!curPath!\bin
+set configPath=!curPath!\portable_config
 
 where pwsh >nul 2>nul
 if %errorlevel% equ 0 (
@@ -86,6 +90,8 @@ if exist "%~dp0\mpv.com" if exist "%~dp0\mpv.exe" (
 set MVPEXIST=$true
 )
 
+set mpvZip=mpv.last.7z
+
 set MPV=^
 $filename = '';^
 $downloadUrl = '';^
@@ -98,47 +104,36 @@ if ($filename -is [array]) {^
 $filename = $filename[0];^
 $downloadUrl = $downloadUrl[0];^
 }^
+$bDownload=$true;^
 if (!MVPEXIST!) {^
 	$stripped = .\mpv --no-config ^| select-string "mpv" ^| select-object -First 1;^
 	$bool = $stripped -match '-g([a-z0-9-]{7})';^
-	$l=$matches[1];^
+	$lBuild =$matches[1];^
 	$bool = $filename -match '-git-([a-z0-9-]{7})';^
-	$g=$matches[1];^
-	if ($l -notmatch $g) {^
-		Write-Host 'Downloading' $downloadUrl -ForegroundColor Green;^
-		Invoke-WebRequest -Uri $downloadUrl -UserAgent "!useragent!" -OutFile "!binPath!\mpv.last.7z";^
-	}^
-} else {^
+	$gBuild =$matches[1];^
+	if ($lBuild -match $gBuild) { $bDownload=$false; } else { Write-Host "Local build is " $lBuild -ForegroundColor Green; }^
+}^
+if ($bDownload) {^
 	Write-Host 'Downloading' $downloadUrl -ForegroundColor Green;^
-	Invoke-WebRequest -Uri $downloadUrl -UserAgent "!useragent!" -OutFile "!binPath!\mpv.last.7z";^
+	Invoke-WebRequest -Uri $downloadUrl -UserAgent "!useragent!" -OutFile "!binPath!\!mpvZip!";^
 }^
 ! 
 
 %exec% -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& {!MPV!}"
 
-if exist "!binPath!\mpv.last.7z" (
-	%exec% -Command "& { Write-Host "Extracting mpv.exe from mpv.last.7z" -ForegroundColor Green; }"
-	"!binPath!\7za.exe" e -r -y "!binPath!\mpv.last.7z" mpv.exe -o"%~dp0" > nul
-	%exec% -Command "& { Write-Host "Extracting mpv.com from mpv.last.7z" -ForegroundColor Green; }"
-	"!binPath!\7za.exe" e -r -y "!binPath!\mpv.last.7z" mpv.com -o"%~dp0" > nul
-	del /Q "!binPath!\mpv.last.7z" > nul
+if exist "!binPath!\!mpvZip!" (
+	%exec% -Command "& { Write-Host "Extracting mpv.exe from !mpvZip!" -ForegroundColor Green; }"
+	"!binPath!\7za.exe" e -r -y "!binPath!\!mpvZip!" mpv.exe -o"!curPath!" > nul
+	%exec% -Command "& { Write-Host "Extracting mpv.com from !mpvZip!" -ForegroundColor Green; }"
+	"!binPath!\7za.exe" e -r -y "!binPath!\!mpvZip!" mpv.com -o"!curPath!" > nul
+	del /Q "!binPath!\!mpvZip!" > nul
 )
 
-set url=https://raw.githubusercontent.com/check4game/MpvIptv/refs/heads/main/portable_config
-
-set configPath=%~dp0portable_config
-
-if not exist "!configPath!\temp" (
-	mkdir "!configPath!\temp" > nul
-)
-if not exist "!configPath!\fonts" (
-	mkdir "!configPath!\fonts" > nul
-)
-if not exist "!configPath!\scripts" (
-	mkdir "!configPath!\scripts" > nul
-)
-if not exist "!configPath!\script-opts" (
-	mkdir "!configPath!\script-opts" > nul
+set dirs=temp fonts scripts script-opts
+for %%f in (%scripts%) do (
+	if not exist "!configPath!\%%f" (
+		mkdir "!configPath!\%%f" > nul
+	)
 )
 
 if not exist "!configPath!\MpvIptv.json" (
@@ -163,10 +158,10 @@ goto :eof
 :DownloadFile
 if exist "!configPath!\%~1" (
 	%exec% -Command "& { Write-Host "Updating %~1" -ForegroundColor Green; }"
-	"!binPath!\curl.exe" --compressed --no-progress-meter -RLo "!configPath!\%~1" --fail -z "!configPath!\%~1" "!url!/%~1"
+	"!binPath!\curl.exe" --compressed --no-progress-meter -RLo "!configPath!\%~1" --fail -z "!configPath!\%~1" "!srcUrl!/%~1"
 ) else (
 	%exec% -Command "& { Write-Host "Downloading %~1" -ForegroundColor Green; }"
-	"!binPath!\curl.exe" --compressed --no-progress-meter -RLo "!configPath!\%~1" --fail "!url!/%~1"
+	"!binPath!\curl.exe" --compressed --no-progress-meter -RLo "!configPath!\%~1" --fail "!srcUrl!/%~1"
 )
 
 exit /b 1
