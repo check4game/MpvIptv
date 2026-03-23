@@ -147,7 +147,7 @@ set scripts=modernz.lua MpvIptv.lua pip_lite.lua
 for %%f in (%scripts%) do (
 	call :DownloadFile "scripts/%%f"
 )
-set script-opts=dkjson.lua htmlEntities.lua modernz-locale.json MpvIptvGroups.lua MpvIptvString.lua MpvIptvUtf8.lua MpvIptvUtils.lua sha2.lua
+set script-opts=dkjson.lua htmlEntities.lua modernz.conf modernz-locale.json MpvIptvGroups.lua MpvIptvString.lua MpvIptvUtf8.lua MpvIptvUtils.lua sha2.lua
 for %%f in (%script-opts%) do (
 	call :DownloadFile "script-opts/%%f"
 )
