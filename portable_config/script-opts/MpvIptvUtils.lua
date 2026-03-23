@@ -6,7 +6,7 @@ local utils = require 'mp.utils'
 
 package.path = mp.command_native({ "expand-path", "~~/script-opts/?.lua;" }) .. package.path
 
-local IPTV_BIN_DIR  = mp.command_native({ "expand-path", "~~/bin/" })
+local IPTV_BIN_DIR  = mp.command_native({ "expand-path", "~~/../bin/" })
 local IPTV_TEMP_DIR  = mp.command_native({ "expand-path", "~~/../temp/" })
 
 local hash = require('sha2').md5
@@ -119,12 +119,12 @@ function MpvIptvUtils.gunzip(gzFile, resultFile)
         return copy_file(gzFile, resultFile)
     end
 
-    local gzip = utils.join_path(IPTV_BIN_DIR, '7za.exe')
+    local gzip = utils.join_path(IPTV_BIN_DIR, 'gzip.exe')
 
     local result = mp.command_native({
         name = "subprocess",
         playback_only = false,
-        args = { gzip, 'e', gzFile, '-y' },
+        args = { proc, '-dfk', gzFile },
         --capture_stdout = true,
         --capture_stderr = true
     })
@@ -485,6 +485,9 @@ function MpvIptvUtils.DownloadLinks(links, index, config, configFile, bReload)
             else
                 msg.info("+Данные для этого источника не изменились.")
             end
+        elseif bEpg and not fiXmlFile then
+            MpvIptvUtils.gunzip(resultFile, xmlFile)
+            msg.info("Данные для этого источника не изменились.")
         else
             msg.info("-Данные для этого источника не изменились.")
         end

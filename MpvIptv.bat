@@ -11,12 +11,12 @@ if %errorlevel% equ 0 (
 	set exec=powershell
 )
 
-
-%exec% -Command "& { Write-Host "!useragent! script v1.1" -ForegroundColor Green; }"
+%exec% -Command "& { Write-Host "!useragent! script v1.2" -ForegroundColor Green; }"
 
 set 7zrUrl=https://www.7-zip.org/a/7zr.exe
 set 7zaUrl=https://www.7-zip.org/a/7z2600-extra.7z
 set curlUrl=https://curl.se/windows/dl-8.19.0_4/curl-8.19.0_4-win64-mingw.zip
+set gzipUrl=https://github.com/ebiggers/libdeflate/releases/download/v1.25/libdeflate-1.25-windows-x86_64-bin.zip
 
 set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/refs/heads/main
 set configUrl=!srcUrl!/portable_config
@@ -28,10 +28,14 @@ set configPath=!curPath!\portable_config
 set EXECURL=!binPath!\curl.exe
 set EXE7ZR=!binPath!\7zr.exe
 set EXE7ZA=!binPath!\7za.exe
+set EXEGZIP=!binPath!\gzip.exe
+
+if not exist "!binPath!" (
+	mkdir "!binPath!" > nul
+)
 
 set 7ZR=^
 if (-not (Test-Path "!EXE7ZR!")) {^
-	$null = New-Item -ItemType Directory -Force (Split-Path "!EXE7ZR!");^
 	Write-Host "Downloading !7zrUrl!" -ForegroundColor Green;^
 	Invoke-WebRequest -Uri "!7zrUrl!" -UserAgent "!useragent!" -OutFile "!EXE7ZR!";^
 }^
@@ -48,7 +52,6 @@ for /f %%i in ('%exec% -Command "('!7zaUrl!' -split '/')[-1]"') do set "7zaZip=%
 
 set 7ZA=^
 if (-not (Test-Path "!EXE7ZA!")) {^
-	$null = New-Item -ItemType Directory -Force (Split-Path "!EXE7ZA!");^
 	Write-Host "Downloading !7zaUrl!" -ForegroundColor Green;^
 	Invoke-WebRequest -Uri "!7zaUrl!" -UserAgent "!useragent!" -OutFile "!binPath!\!7zaZip!";^
 }^
@@ -71,15 +74,11 @@ for /f %%i in ('%exec% -Command "('!curlUrl!' -split '/')[-1]"') do set "curlZip
 
 set CURL=^
 if (-not (Test-Path "!EXECURL!")) {^
-	$null = New-Item -ItemType Directory -Force (Split-Path "!EXECURL!");^
 	Write-Host "Downloading !curlUrl!" -ForegroundColor Green;^
 	Invoke-WebRequest -Uri "!curlUrl!" -UserAgent "!useragent!" -OutFile "!binPath!\!curlZip!";^
 }^
 ! 
-
-if not exist "!EXECURL!" (
-	%exec% -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& {!CURL!}"
-)
+%exec% -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& {!CURL!}"
 
 if exist "!binPath!\!curlZip!" (
 	%exec% -Command "& { Write-Host "Extracting curl.exe from !curlZip!" -ForegroundColor Green; }"
@@ -101,11 +100,32 @@ if exist "!curPath!\MpvIptv.bat.temp" (
 		%exec% -Command "& { Write-Host "new script version exist" -ForegroundColor Green; }"
         copy /Y "!curPath!\MpvIptv.bat.temp" "!curPath!\MpvIptv.bat" > nul
 	    del /Q "!curPath!\MpvIptv.bat.temp" > nul 2>&1
-        :start "" "!curPath!\MpvIptv.bat" %*
-		call "!curPath!\MpvIptv.bat" %*
-        exit /b
+		:call "!curPath!\MpvIptv.bat" %*
+        :exit /b
     )
     del /Q "!curPath!\MpvIptv.bat.temp" > nul 2>&1
+)
+
+for /f %%i in ('%exec% -Command "('!gzipUrl!' -split '/')[-1]"') do set "gzipZip=%%i"
+
+set GZIP=^
+if (-not (Test-Path "!EXEGZIP!")) {^
+	Write-Host "Downloading !gzipUrl!" -ForegroundColor Green;^
+	Invoke-WebRequest -Uri "!gzipUrl!" -UserAgent "!useragent!" -OutFile "!binPath!\!gzipZip!";^
+}^
+! 
+%exec% -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& {!GZIP!}"
+
+if exist "!binPath!\!gzipZip!" (
+	%exec% -Command "& { Write-Host "Extracting gzip.exe from !gzipZip!" -ForegroundColor Green; }"
+	"!EXE7ZA!" e -r -y "!binPath!\!gzipZip!" gzip.exe -o"!binPath!" > nul
+	del /Q "!binPath!\!gzipZip!" > nul
+)
+
+if not exist "!EXEGZIP!" (
+	%exec% -Command "& { Write-Host "no gzip.exe in !binPath!" -ForegroundColor Red; }"
+    pause
+    exit /b 1
 )
 
 set MVPEXIST=$false
