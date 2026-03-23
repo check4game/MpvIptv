@@ -9,7 +9,7 @@ local ass = assdraw.ass_new()
  ]]
 
 local APP_NAME = "MpvIptv"
-local APP_VERSION = "1.2.1"
+local APP_VERSION = "v1.2.2"
 local TITLE_PREFIX = APP_NAME .. " 📺"
 
 local APP_USER_AGENT = string.format("%s/%s (%s) %s/%s-%s", APP_NAME, APP_VERSION, jit.os, mp.get_property("mpv-version"):gsub(' ', '/'), jit.version, jit.version_num)
@@ -321,15 +321,18 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
                     or line:match('catchup%-days="([^"]+)"') 
                     or line:match('timeshift="([^"]+)"')
                     or line:match('catchup-time="([^"]+)"')
+                    or ""
 
         if catchup_type ~="" and cd ~= "" and cd ~= "0" then
+
             if catchup_type == "flussonic" then
                 catchup_type = 2 -- index.m3u8 => index-1491395400-900.m3u8
             elseif catchup_type == "shift" then
                 catchup_type = 3 -- ?utc=1491395400&lutc=1491808183
             else
-                catchup_type = 9
+                catchup_type = 1
             end
+
         elseif cd ~= "" and cd ~= "0" then
             catchup_type = 1 -- архив есть
         else
@@ -343,10 +346,9 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
         
         if line:startswith("#EXTM3U") then
         
-        -- думал что на все но фиг фам
-        --#EXTM3U generation-date="2026.03.05 18:01:31 MSK" url-tvg="https://rus.epg.team/3.1.xml.gz" playlist-name="rus.tvtm.one.Playlist"
-        -- catchup-icon="1" catchup-type="flussonic" catchup-time="604800" playlist-logo="https://rus.tvtm.one/images/rus.tvtm.one.playlist.logo.png"
-
+            -- думал что на все но фиг фам
+            --#EXTM3U generation-date="2026.03.05 18:01:31 MSK" url-tvg="https://rus.epg.team/3.1.xml.gz" playlist-name="rus.tvtm.one.Playlist"
+            -- catchup-icon="1" catchup-type="flussonic" catchup-time="604800" playlist-logo="https://rus.tvtm.one/images/rus.tvtm.one.playlist.logo.png"
             --global_catchup_type = get_catchup_type(line)
 
         elseif line:startswith("#EXTINF:") then
@@ -880,11 +882,12 @@ function map_channel_to_programme(channel)
     end
 
     if channel.catchup_type < 1 then
-        channel.symbol = channel.symbol .. " \u{2005}" --FOUR-PER-EM SPACE
+        channel.symbol = channel.symbol .. "{\\alpha&HFF&}↺{\\alpha&H00&}"
+        
     elseif channel.catchup_type < 4 then
         channel.symbol = channel.symbol .. "↺"
     else
-        channel.symbol = channel.symbol .. channel.catchup_type .. "\u{2005}"
+        channel.symbol = channel.symbol .. "{\\alpha&HFF&}↺{\\alpha&H00&}"
     end
 
     channel.tvg_id = tvg_id
@@ -1180,7 +1183,6 @@ function show_channels_menu(group_name, page)
                         local stop = os.date("*t", info.stop)
                         
                         local padding = string.rep(' ', max_len - display_name_len + (bRtl and 2 or 1))
-                        --padding = bRtl and (padding .. "\u{2006}\u{2006}") or padding
 
                         cprogramme = makeup(DEFAULT_FONT_SIZE,
                             string.format("%s%s %s %s", padding, channel.symbol,
@@ -1197,11 +1199,9 @@ function show_channels_menu(group_name, page)
                     local stop = os.date("*t", info.stop)
 
                     local padding = string.rep(' ', max_len - display_name_len + (bRtl and 2 or 1))
-                    --padding = bRtl and (padding .. "\u{2002}") or padding
 
                     cprogramme = makeup(DEFAULT_FONT_SIZE,
-                        string.format("%s%s %s %s",
-                        padding, channel.symbol,
+                        string.format("%s%s %s %s", padding, channel.symbol,
                         string.format("%02d/%02d/%04d, %02d:%02d-%02d:%02d", start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min),
                         info.title:gsub("^⋗ ", "")))
                 end
@@ -1900,7 +1900,6 @@ mp.add_forced_key_binding(nil, "select-iptv-self", function ()
         mp.commandv("set", "pause", "yes")
 
         input.select({
-            --prompt = "Выбор playlist для просмотра",
             items = names,
             default_item = default_item,
 
@@ -1912,7 +1911,7 @@ mp.add_forced_key_binding(nil, "select-iptv-self", function ()
                     MpvIptvUtils.LoadAndUpdatePlaylistAndEpg(IPTV_JSON_CONFIG, IPTV_JSON_CONFIG_FILE, index - #urls)
                     show_console()
 
-                else --if GLOBAL_PLAYLIST_INDEX ~= index then
+                else
                     MpvIptvUtils.BindKeySelectPlaylist(false)
                     full_init()
                     GLOBAL_PLAYLIST_INDEX = index
@@ -1940,7 +1939,6 @@ mp.add_forced_key_binding("g-c", "select-channel-list-self", function ()
             local items = {}
 
             for i, channel in ipairs(channels) do
-                --channels[i] = string.format("%d. %s\u{00A0}", i, channel.name)
                 items[i] = string.format("%d. %s", i, channel.name)
             end
 
@@ -2023,8 +2021,6 @@ mp.add_forced_key_binding("g-p", "select-play-list-self", function ()
             playlist[i] = title_entry.title
         end
 
-        --playlist[i] = playlist[i]:gsub(" ", "\u{00A0}")
-        
         if entry.playing then
             default_item = i
         end
