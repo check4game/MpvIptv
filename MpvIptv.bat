@@ -11,7 +11,7 @@ if %errorlevel% equ 0 (
 	set exec=powershell
 )
 
-%exec% -Command "& { Write-Host "!useragent! script v1.4.2" -ForegroundColor Green; }"
+%exec% -Command "& { Write-Host "!useragent! script v1.4.3" -ForegroundColor Green; }"
 
 set 7zrUrl=https://www.7-zip.org/a/7zr.exe
 set 7zaUrl=https://www.7-zip.org/a/7z2600-extra.7z
@@ -100,7 +100,7 @@ if not exist "!EXECURL!" (
     exit /b 1
 )
 
-"!EXECURL!" --compressed --no-progress-meter -RLo "!tempPath!\MpvIptv.bat" --fail "!srcUrl!/MpvIptv.bat"
+"!EXECURL!" --compressed --no-progress-meter --user-agent "!useragent!" -RLo "!tempPath!\MpvIptv.bat" --fail "!srcUrl!/MpvIptv.bat"
 
 if exist "!tempPath!\MpvIptv.bat" (
     fc "!tempPath!\MpvIptv.bat" "!curPath!\MpvIptv.bat" > nul 2>&1
@@ -227,10 +227,10 @@ set "etag=!etag:/=.!.etag"
 
 if exist "!configPath!\%~1" if exist "!tempPath!\!etag!" (
 	%exec% -Command "& { Write-Host "Updating %~1" -ForegroundColor Green; }"
-	"!EXECURL!" --compressed --no-progress-meter --etag-save "!tempPath!\!etag!" --etag-compare "!tempPath!\!etag!" -RLo "!configPath!\%~1" --fail -z "!configPath!\%~1" "!configUrl!/%~1"
+	"!EXECURL!" --compressed --no-progress-meter --user-agent "!useragent!" --etag-save "!tempPath!\!etag!" --etag-compare "!tempPath!\!etag!" -RLo "!configPath!\%~1" --fail -z "!configPath!\%~1" "!configUrl!/%~1"
 ) else (
 	%exec% -Command "& { Write-Host "Downloading %~1" -ForegroundColor Green; }"
-	"!EXECURL!" --compressed --no-progress-meter --etag-save "!tempPath!\!etag!" -RLo "!configPath!\%~1" --fail "!configUrl!/%~1"
+	"!EXECURL!" --compressed --no-progress-meter --user-agent "!useragent!" --etag-save "!tempPath!\!etag!" -RLo "!configPath!\%~1" --fail "!configUrl!/%~1"
 )
 
 exit /b 1
