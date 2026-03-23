@@ -4,16 +4,6 @@ pushd %~dp0
 
 set useragent=MpvIptv-Updater
 
-set 7zrUrl=https://www.7-zip.org/a/7zr.exe
-set 7zaUrl=https://www.7-zip.org/a/7z2600-extra.7z
-set curlUrl=https://curl.se/windows/dl-8.19.0_4/curl-8.19.0_4-win64-mingw.zip
-
-set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/refs/heads/main/portable_config
-
-set curPath=%~dp0
-set binPath=!curPath!\bin
-set configPath=!curPath!\portable_config
-
 where pwsh >nul 2>nul
 if %errorlevel% equ 0 (
 	set exec=pwsh
@@ -21,16 +11,34 @@ if %errorlevel% equ 0 (
 	set exec=powershell
 )
 
+
+%exec% -Command "& { Write-Host "!useragent! script v1.1" -ForegroundColor Green; }"
+
+set 7zrUrl=https://www.7-zip.org/a/7zr.exe
+set 7zaUrl=https://www.7-zip.org/a/7z2600-extra.7z
+set curlUrl=https://curl.se/windows/dl-8.19.0_4/curl-8.19.0_4-win64-mingw.zip
+
+set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/refs/heads/main
+set configUrl=!srcUrl!/portable_config
+
+set curPath=%~dp0
+set binPath=!curPath!\bin
+set configPath=!curPath!\portable_config
+
+set EXECURL=!binPath!\curl.exe
+set EXE7ZR=!binPath!\7zr.exe
+set EXE7ZA=!binPath!\7za.exe
+
 set 7ZR=^
-if (-not (Test-Path "!binPath!\7zr.exe")) {^
-	$null = New-Item -ItemType Directory -Force (Split-Path "!binPath!\7zr.exe");^
+if (-not (Test-Path "!EXE7ZR!")) {^
+	$null = New-Item -ItemType Directory -Force (Split-Path "!EXE7ZR!");^
 	Write-Host "Downloading !7zrUrl!" -ForegroundColor Green;^
-	Invoke-WebRequest -Uri "!7zrUrl!" -UserAgent "!useragent!" -OutFile "!binPath!\7zr.exe";^
+	Invoke-WebRequest -Uri "!7zrUrl!" -UserAgent "!useragent!" -OutFile "!EXE7ZR!";^
 }^
 ! 
 %exec% -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& {!7ZR!}"
 
-if not exist "!binPath!\7zr.exe" (
+if not exist "!EXE7ZR!" (
 	%exec% -Command "& { Write-Host "no 7zr.exe in !binPath!" -ForegroundColor Red; }"
     pause
     exit /b 1
@@ -39,8 +47,8 @@ if not exist "!binPath!\7zr.exe" (
 for /f %%i in ('%exec% -Command "('!7zaUrl!' -split '/')[-1]"') do set "7zaZip=%%i"
 
 set 7ZA=^
-if (-not (Test-Path "!binPath!\7za.exe")) {^
-	$null = New-Item -ItemType Directory -Force (Split-Path "!binPath!\7za.exe");^
+if (-not (Test-Path "!EXE7ZA!")) {^
+	$null = New-Item -ItemType Directory -Force (Split-Path "!EXE7ZA!");^
 	Write-Host "Downloading !7zaUrl!" -ForegroundColor Green;^
 	Invoke-WebRequest -Uri "!7zaUrl!" -UserAgent "!useragent!" -OutFile "!binPath!\!7zaZip!";^
 }^
@@ -49,11 +57,11 @@ if (-not (Test-Path "!binPath!\7za.exe")) {^
 
 if exist "!binPath!\!7zaZip!" (
 	%exec% -Command "& { Write-Host "Extracting 7za.exe from !7zaZip!" -ForegroundColor Green; }"
-	"!binPath!\7zr.exe" e -y "!binPath!\!7zaZip!" 7za.exe -o"!binPath!" > nul
+	"!EXE7ZR!" e -y "!binPath!\!7zaZip!" 7za.exe -o"!binPath!" > nul
 	del /Q "!binPath!\!7zaZip!" > nul
 )
 
-if not exist "!binPath!\7za.exe" (
+if not exist "!EXE7ZA!" (
 	%exec% -Command "& { Write-Host "no 7za.exe in !binPath!" -ForegroundColor Red; }"
     pause
     exit /b 1
@@ -62,27 +70,42 @@ if not exist "!binPath!\7za.exe" (
 for /f %%i in ('%exec% -Command "('!curlUrl!' -split '/')[-1]"') do set "curlZip=%%i"
 
 set CURL=^
-if (-not (Test-Path "!binPath!\curl.exe")) {^
-	$null = New-Item -ItemType Directory -Force (Split-Path "!binPath!\curl.exe");^
+if (-not (Test-Path "!EXECURL!")) {^
+	$null = New-Item -ItemType Directory -Force (Split-Path "!EXECURL!");^
 	Write-Host "Downloading !curlUrl!" -ForegroundColor Green;^
 	Invoke-WebRequest -Uri "!curlUrl!" -UserAgent "!useragent!" -OutFile "!binPath!\!curlZip!";^
 }^
 ! 
 
-if not exist "!binPath!\curl.exe" (
+if not exist "!EXECURL!" (
 	%exec% -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& {!CURL!}"
 )
 
 if exist "!binPath!\!curlZip!" (
 	%exec% -Command "& { Write-Host "Extracting curl.exe from !curlZip!" -ForegroundColor Green; }"
-	"!binPath!\7za.exe" e -r -y "!binPath!\!curlZip!" curl.exe -o"!binPath!" > nul
+	"!EXE7ZA!" e -r -y "!binPath!\!curlZip!" curl.exe -o"!binPath!" > nul
 	del /Q "!binPath!\!curlZip!" > nul
 )
 
-if not exist "!binPath!\curl.exe" (
+if not exist "!EXECURL!" (
 	%exec% -Command "& { Write-Host "no curl.exe in !binPath!" -ForegroundColor Red; }"
     pause
     exit /b 1
+)
+
+"!EXECURL!" --compressed --no-progress-meter -RLo "!curPath!\MpvIptv.bat.temp" --fail "!srcUrl!/MpvIptv.bat"
+
+if exist "!curPath!\MpvIptv.bat.temp" (
+    fc "!curPath!\MpvIptv.bat.temp" "!curPath!\MpvIptv.bat" > nul 2>&1
+    if errorlevel 1 (
+		%exec% -Command "& { Write-Host "new script version exist" -ForegroundColor Green; }"
+        copy /Y "!curPath!\MpvIptv.bat.temp" "!curPath!\MpvIptv.bat" > nul
+	    del /Q "!curPath!\MpvIptv.bat.temp" > nul 2>&1
+        :start "" "!curPath!\MpvIptv.bat" %*
+		call "!curPath!\MpvIptv.bat" %*
+        exit /b
+    )
+    del /Q "!curPath!\MpvIptv.bat.temp" > nul 2>&1
 )
 
 set MVPEXIST=$false
@@ -101,8 +124,8 @@ $json = Invoke-WebRequest $apiUrl -MaximumRedirection 0 -ErrorAction Ignore -Use
 $filename = $json.assets ^| where { $_.name -Match 'mpv-x86_64-[0-9]{8}' } ^| Select-Object -ExpandProperty name;^
 $downloadUrl = $json.assets ^| where { $_.name -Match 'mpv-x86_64-[0-9]{8}' } ^| Select-Object -ExpandProperty browser_download_url;^
 if ($filename -is [array]) {^
-$filename = $filename[0];^
-$downloadUrl = $downloadUrl[0];^
+	$filename = $filename[0];^
+	$downloadUrl = $downloadUrl[0];^
 }^
 $bDownload=$true;^
 if (!MVPEXIST!) {^
@@ -123,13 +146,17 @@ if ($bDownload) {^
 
 if exist "!binPath!\!mpvZip!" (
 	%exec% -Command "& { Write-Host "Extracting mpv.exe from !mpvZip!" -ForegroundColor Green; }"
-	"!binPath!\7za.exe" e -r -y "!binPath!\!mpvZip!" mpv.exe -o"!curPath!" > nul
+	"!EXE7ZA!" e -r -y "!binPath!\!mpvZip!" mpv.exe -o"!curPath!" > nul
 	%exec% -Command "& { Write-Host "Extracting mpv.com from !mpvZip!" -ForegroundColor Green; }"
-	"!binPath!\7za.exe" e -r -y "!binPath!\!mpvZip!" mpv.com -o"!curPath!" > nul
+	"!EXE7ZA!" e -r -y "!binPath!\!mpvZip!" mpv.com -o"!curPath!" > nul
 	del /Q "!binPath!\!mpvZip!" > nul
 )
 
-set dirs=temp fonts scripts script-opts
+if not exist "!curPath!\temp" (
+	mkdir "!curPath!\temp" > nul
+)
+
+set dirs=fonts scripts script-opts
 for %%f in (%scripts%) do (
 	if not exist "!configPath!\%%f" (
 		mkdir "!configPath!\%%f" > nul
@@ -140,7 +167,10 @@ if not exist "!configPath!\MpvIptv.json" (
 	call :DownloadFile "MpvIptv.json"
 )
 
-call :DownloadFile "mpv.conf"
+if not exist "!configPath!\MpvIptv.conf" (
+	call :DownloadFile "mpv.conf"
+)
+
 call :DownloadFile "MpvIptv.mp4"
 call :DownloadFile "fonts/modernz-icons.ttf"
 set scripts=modernz.lua MpvIptv.lua pip_lite.lua
@@ -158,10 +188,10 @@ goto :eof
 :DownloadFile
 if exist "!configPath!\%~1" (
 	%exec% -Command "& { Write-Host "Updating %~1" -ForegroundColor Green; }"
-	"!binPath!\curl.exe" --compressed --no-progress-meter -RLo "!configPath!\%~1" --fail -z "!configPath!\%~1" "!srcUrl!/%~1"
+	"!EXECURL!" --compressed --no-progress-meter -RLo "!configPath!\%~1" --fail -z "!configPath!\%~1" "!configUrl!/%~1"
 ) else (
 	%exec% -Command "& { Write-Host "Downloading %~1" -ForegroundColor Green; }"
-	"!binPath!\curl.exe" --compressed --no-progress-meter -RLo "!configPath!\%~1" --fail "!srcUrl!/%~1"
+	"!EXECURL!" --compressed --no-progress-meter -RLo "!configPath!\%~1" --fail "!configUrl!/%~1"
 )
 
 exit /b 1

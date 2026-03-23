@@ -7,7 +7,7 @@ local utils = require 'mp.utils'
 package.path = mp.command_native({ "expand-path", "~~/script-opts/?.lua;" }) .. package.path
 
 local IPTV_BIN_DIR  = mp.command_native({ "expand-path", "~~/bin/" })
-local IPTV_TEMP_DIR  = mp.command_native({ "expand-path", "~~/temp/" })
+local IPTV_TEMP_DIR  = mp.command_native({ "expand-path", "~~/../temp/" })
 
 local hash = require('sha2').md5
 
