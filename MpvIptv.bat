@@ -11,7 +11,7 @@ if %errorlevel% equ 0 (
 	set exec=powershell
 )
 
-%exec% -Command "& { Write-Host "!useragent! script v1.4" -ForegroundColor Green; }"
+%exec% -Command "& { Write-Host "!useragent! script v1.4.1" -ForegroundColor Green; }"
 
 set 7zrUrl=https://www.7-zip.org/a/7zr.exe
 set 7zaUrl=https://www.7-zip.org/a/7z2600-extra.7z
@@ -172,12 +172,11 @@ if exist "!binPath!\!mpvZip!" (
 	"!EXE7ZA!" e -r -y "!binPath!\!mpvZip!" mpv.exe -o"!curPath!" > nul
 	%exec% -Command "& { Write-Host "Extracting mpv.com from !mpvZip!" -ForegroundColor Green; }"
 	"!EXE7ZA!" e -r -y "!binPath!\!mpvZip!" mpv.com -o"!curPath!" > nul
+	if not "%mpvApi%" == "%mpvApi:shinchiro=%" (
+		%exec% -Command "& { Write-Host "Extracting d3dcompiler_43.dll from !mpvZip!" -ForegroundColor Green; }"
+		"!EXE7ZA!" e -r -y "!binPath!\!mpvZip!" d3dcompiler_43.dll -o"!curPath!" > nul
+	)
 	del /Q "!binPath!\!mpvZip!" > nul
-)
-
-if exist "!binPath!\!mpvZip!" not "%mpvApi%" == "%mpvApi:shinchiro=%" (
-	%exec% -Command "& { Write-Host "Extracting d3dcompiler_43.dll from !mpvZip!" -ForegroundColor Green; }"
-	"!EXE7ZA!" e -r -y "!binPath!\!mpvZip!" d3dcompiler_43.dll -o"!curPath!" > nul
 )
 
 if not exist "!curPath!\temp" (
