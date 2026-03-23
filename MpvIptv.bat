@@ -11,7 +11,7 @@ if %errorlevel% equ 0 (
 	set exec=powershell
 )
 
-%exec% -Command "& { Write-Host "!useragent! script v1.3" -ForegroundColor Green; }"
+%exec% -Command "& { Write-Host "!useragent! script v1.4" -ForegroundColor Green; }"
 
 set 7zrUrl=https://www.7-zip.org/a/7zr.exe
 set 7zaUrl=https://www.7-zip.org/a/7z2600-extra.7z
@@ -20,6 +20,9 @@ set gzipUrl=https://github.com/ebiggers/libdeflate/releases/download/v1.25/libde
 
 set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/refs/heads/main
 set configUrl=!srcUrl!/portable_config
+
+::set mpvApi=https://api.github.com/repos/zhongfly/mpv-winbuild/releases/latest
+set mpvApi=https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/releases/latest
 
 set curPath=%~dp0
 set binPath=!curPath!\bin
@@ -138,7 +141,7 @@ set mpvZip=mpv.last.7z
 set MPV=^
 $filename = '';^
 $downloadUrl = '';^
-$apiUrl = 'https://api.github.com/repos/zhongfly/mpv-winbuild/releases/latest';^
+$apiUrl = '!mpvApi!';^
 Write-Host "Checking" $apiUrl -ForegroundColor Green;^
 $json = Invoke-WebRequest $apiUrl -MaximumRedirection 0 -ErrorAction Ignore -UseBasicParsing -UserAgent "!useragent!" ^| ConvertFrom-Json;^
 $filename = $json.assets ^| where { $_.name -Match 'mpv-x86_64-[0-9]{8}' } ^| Select-Object -ExpandProperty name;^
@@ -170,6 +173,11 @@ if exist "!binPath!\!mpvZip!" (
 	%exec% -Command "& { Write-Host "Extracting mpv.com from !mpvZip!" -ForegroundColor Green; }"
 	"!EXE7ZA!" e -r -y "!binPath!\!mpvZip!" mpv.com -o"!curPath!" > nul
 	del /Q "!binPath!\!mpvZip!" > nul
+)
+
+if exist "!binPath!\!mpvZip!" not "%mpvApi%" == "%mpvApi:shinchiro=%" (
+	%exec% -Command "& { Write-Host "Extracting d3dcompiler_43.dll from !mpvZip!" -ForegroundColor Green; }"
+	"!EXE7ZA!" e -r -y "!binPath!\!mpvZip!" d3dcompiler_43.dll -o"!curPath!" > nul
 )
 
 if not exist "!curPath!\temp" (
