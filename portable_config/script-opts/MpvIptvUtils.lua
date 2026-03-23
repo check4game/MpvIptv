@@ -124,7 +124,7 @@ function MpvIptvUtils.gunzip(gzFile, resultFile)
     local result = mp.command_native({
         name = "subprocess",
         playback_only = false,
-        args = { proc, '-dfk', gzFile },
+        args = { gzip, '-dfk', gzFile },
         --capture_stdout = true,
         --capture_stderr = true
     })
