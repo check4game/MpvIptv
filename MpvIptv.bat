@@ -11,7 +11,7 @@ if %errorlevel% equ 0 (
 	set exec=powershell
 )
 
-%exec% -Command "& { Write-Host "!useragent! script v1.2" -ForegroundColor Green; }"
+%exec% -Command "& { Write-Host "!useragent! script v1.3" -ForegroundColor Green; }"
 
 set 7zrUrl=https://www.7-zip.org/a/7zr.exe
 set 7zaUrl=https://www.7-zip.org/a/7z2600-extra.7z
@@ -100,8 +100,8 @@ if exist "!curPath!\MpvIptv.bat.temp" (
 		%exec% -Command "& { Write-Host "new script version exist" -ForegroundColor Green; }"
         copy /Y "!curPath!\MpvIptv.bat.temp" "!curPath!\MpvIptv.bat" > nul
 	    del /Q "!curPath!\MpvIptv.bat.temp" > nul 2>&1
-		:call "!curPath!\MpvIptv.bat" %*
-        :exit /b
+		call "!curPath!\MpvIptv.bat" %*
+        exit /b
     )
     del /Q "!curPath!\MpvIptv.bat.temp" > nul 2>&1
 )
