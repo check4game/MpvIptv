@@ -11,7 +11,7 @@ if %errorlevel% equ 0 (
 	set exec=powershell
 )
 
-%exec% -Command "& { Write-Host "!useragent! script v1.4.4" -ForegroundColor Green; }"
+%exec% -Command "& { Write-Host "!useragent! script v1.4.5" -ForegroundColor Green; }"
 
 set 7zrUrl=https://www.7-zip.org/a/7zr.exe
 set 7zaUrl=https://www.7-zip.org/a/7z2600-extra.7z
@@ -190,8 +190,8 @@ if exist "!tempPath!\!mpvZip!" (
 	del /Q "!tempPath!\!mpvZip!" > nul
 )
 
-set dirs=fonts scripts script-opts
-for %%f in (%scripts%) do (
+set folders=fonts scripts script-opts
+for %%f in (%folders%) do (
 	if not exist "!configPath!\%%f" (
 		mkdir "!configPath!\%%f" > nul
 	)
@@ -225,7 +225,7 @@ goto :eof
 set "etag=%~1"
 set "etag=!etag:/=.!.etag"
 
-if exist "!configPath!\%~1" if exist "!tempPath!\!etag!" (
+if exist "!tempPath!\!etag!" (
 	%exec% -Command "& { Write-Host "Updating %~1" -ForegroundColor Green; }"
 	"!EXECURL!" --compressed --no-progress-meter --user-agent "!useragent!" --etag-save "!tempPath!\!etag!" --etag-compare "!tempPath!\!etag!" -RLo "!configPath!\%~1" --fail -z "!configPath!\%~1" "!configUrl!/%~1"
 ) else (
