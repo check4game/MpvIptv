@@ -11,7 +11,7 @@ if %errorlevel% equ 0 (
 	set exec=powershell
 )
 
-%exec% -Command "& { Write-Host "!useragent! script v1.4.1" -ForegroundColor Green; }"
+%exec% -Command "& { Write-Host "!useragent! script v1.4.2" -ForegroundColor Green; }"
 
 set 7zrUrl=https://www.7-zip.org/a/7zr.exe
 set 7zaUrl=https://www.7-zip.org/a/7z2600-extra.7z
@@ -25,8 +25,9 @@ set configUrl=!srcUrl!/portable_config
 set mpvApi=https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/releases/latest
 
 set curPath=%~dp0
-set binPath=!curPath!\bin
-set configPath=!curPath!\portable_config
+set binPath=!curPath!bin
+set tempPath=!curPath!temp
+set configPath=!curPath!portable_config
 
 set EXECURL=!binPath!\curl.exe
 set EXE7ZR=!binPath!\7zr.exe
@@ -35,6 +36,10 @@ set EXEGZIP=!binPath!\gzip.exe
 
 if not exist "!binPath!" (
 	mkdir "!binPath!" > nul
+)
+
+if not exist "!tempPath!" (
+	mkdir "!tempPath!" > nul
 )
 
 set 7ZR=^
@@ -56,15 +61,15 @@ for /f %%i in ('%exec% -Command "('!7zaUrl!' -split '/')[-1]"') do set "7zaZip=%
 set 7ZA=^
 if (-not (Test-Path "!EXE7ZA!")) {^
 	Write-Host "Downloading !7zaUrl!" -ForegroundColor Green;^
-	Invoke-WebRequest -Uri "!7zaUrl!" -UserAgent "!useragent!" -OutFile "!binPath!\!7zaZip!";^
+	Invoke-WebRequest -Uri "!7zaUrl!" -UserAgent "!useragent!" -OutFile "!tempPath!\!7zaZip!";^
 }^
 ! 
 %exec% -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& {!7ZA!}"
 
-if exist "!binPath!\!7zaZip!" (
+if exist "!tempPath!\!7zaZip!" (
 	%exec% -Command "& { Write-Host "Extracting 7za.exe from !7zaZip!" -ForegroundColor Green; }"
-	"!EXE7ZR!" e -y "!binPath!\!7zaZip!" 7za.exe -o"!binPath!" > nul
-	del /Q "!binPath!\!7zaZip!" > nul
+	"!EXE7ZR!" e -y "!tempPath!\!7zaZip!" 7za.exe -o"!binPath!" > nul
+	del /Q "!tempPath!\!7zaZip!" > nul
 )
 
 if not exist "!EXE7ZA!" (
@@ -78,15 +83,15 @@ for /f %%i in ('%exec% -Command "('!curlUrl!' -split '/')[-1]"') do set "curlZip
 set CURL=^
 if (-not (Test-Path "!EXECURL!")) {^
 	Write-Host "Downloading !curlUrl!" -ForegroundColor Green;^
-	Invoke-WebRequest -Uri "!curlUrl!" -UserAgent "!useragent!" -OutFile "!binPath!\!curlZip!";^
+	Invoke-WebRequest -Uri "!curlUrl!" -UserAgent "!useragent!" -OutFile "!tempPath!\!curlZip!";^
 }^
 ! 
 %exec% -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& {!CURL!}"
 
-if exist "!binPath!\!curlZip!" (
+if exist "!tempPath!\!curlZip!" (
 	%exec% -Command "& { Write-Host "Extracting curl.exe from !curlZip!" -ForegroundColor Green; }"
-	"!EXE7ZA!" e -r -y "!binPath!\!curlZip!" curl.exe -o"!binPath!" > nul
-	del /Q "!binPath!\!curlZip!" > nul
+	"!EXE7ZA!" e -r -y "!tempPath!\!curlZip!" curl.exe -o"!binPath!" > nul
+	del /Q "!tempPath!\!curlZip!" > nul
 )
 
 if not exist "!EXECURL!" (
@@ -95,18 +100,18 @@ if not exist "!EXECURL!" (
     exit /b 1
 )
 
-"!EXECURL!" --compressed --no-progress-meter -RLo "!curPath!\MpvIptv.bat.temp" --fail "!srcUrl!/MpvIptv.bat"
+"!EXECURL!" --compressed --no-progress-meter -RLo "!tempPath!\MpvIptv.bat" --fail "!srcUrl!/MpvIptv.bat"
 
-if exist "!curPath!\MpvIptv.bat.temp" (
-    fc "!curPath!\MpvIptv.bat.temp" "!curPath!\MpvIptv.bat" > nul 2>&1
+if exist "!tempPath!\MpvIptv.bat" (
+    fc "!tempPath!\MpvIptv.bat" "!curPath!\MpvIptv.bat" > nul 2>&1
     if errorlevel 1 (
-		%exec% -Command "& { Write-Host "new script version exist" -ForegroundColor Green; }"
-        copy /Y "!curPath!\MpvIptv.bat.temp" "!curPath!\MpvIptv.bat" > nul
-	    del /Q "!curPath!\MpvIptv.bat.temp" > nul 2>&1
+		%exec% -Command "& { Write-Host "< new script version exist >" -ForegroundColor Green; }"
+        copy /Y "!tempPath!\MpvIptv.bat" "!curPath!\MpvIptv.bat" > nul
+	    del /Q "!tempPath!\MpvIptv.bat" > nul 2>&1
 		call "!curPath!\MpvIptv.bat" %*
         exit /b
     )
-    del /Q "!curPath!\MpvIptv.bat.temp" > nul 2>&1
+    del /Q "!tempPath!\MpvIptv.bat" > nul 2>&1
 )
 
 for /f %%i in ('%exec% -Command "('!gzipUrl!' -split '/')[-1]"') do set "gzipZip=%%i"
@@ -114,15 +119,15 @@ for /f %%i in ('%exec% -Command "('!gzipUrl!' -split '/')[-1]"') do set "gzipZip
 set GZIP=^
 if (-not (Test-Path "!EXEGZIP!")) {^
 	Write-Host "Downloading !gzipUrl!" -ForegroundColor Green;^
-	Invoke-WebRequest -Uri "!gzipUrl!" -UserAgent "!useragent!" -OutFile "!binPath!\!gzipZip!";^
+	Invoke-WebRequest -Uri "!gzipUrl!" -UserAgent "!useragent!" -OutFile "!tempPath!\!gzipZip!";^
 }^
 ! 
 %exec% -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& {!GZIP!}"
 
-if exist "!binPath!\!gzipZip!" (
+if exist "!tempPath!\!gzipZip!" (
 	%exec% -Command "& { Write-Host "Extracting gzip.exe from !gzipZip!" -ForegroundColor Green; }"
-	"!EXE7ZA!" e -r -y "!binPath!\!gzipZip!" gzip.exe -o"!binPath!" > nul
-	del /Q "!binPath!\!gzipZip!" > nul
+	"!EXE7ZA!" e -r -y "!tempPath!\!gzipZip!" gzip.exe -o"!binPath!" > nul
+	del /Q "!tempPath!\!gzipZip!" > nul
 )
 
 if not exist "!EXEGZIP!" (
@@ -132,8 +137,15 @@ if not exist "!EXEGZIP!" (
 )
 
 set MVPEXIST=$false
-if exist "%~dp0\mpv.com" if exist "%~dp0\mpv.exe" (
-set MVPEXIST=$true
+
+if not "%mpvApi%" == "%mpvApi:shinchiro=%" (
+	if exist "!curPath!\mpv.com" if exist "!curPath!\mpv.exe" if exist "!curPath!\d3dcompiler_43.dll" (
+		set MVPEXIST=$true
+	)
+) else (
+	if exist "!curPath!\mpv.com" if exist "!curPath!\mpv.exe" (
+		set MVPEXIST=$true
+	)
 )
 
 set mpvZip=mpv.last.7z
@@ -161,26 +173,21 @@ if (!MVPEXIST!) {^
 }^
 if ($bDownload) {^
 	Write-Host 'Downloading' $downloadUrl -ForegroundColor Green;^
-	Invoke-WebRequest -Uri $downloadUrl -UserAgent "!useragent!" -OutFile "!binPath!\!mpvZip!";^
+	Invoke-WebRequest -Uri $downloadUrl -UserAgent "!useragent!" -OutFile "!tempPath!\!mpvZip!";^
 }^
 ! 
-
 %exec% -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& {!MPV!}"
 
-if exist "!binPath!\!mpvZip!" (
+if exist "!tempPath!\!mpvZip!" (
 	%exec% -Command "& { Write-Host "Extracting mpv.exe from !mpvZip!" -ForegroundColor Green; }"
-	"!EXE7ZA!" e -r -y "!binPath!\!mpvZip!" mpv.exe -o"!curPath!" > nul
+	"!EXE7ZA!" e -r -y "!tempPath!\!mpvZip!" mpv.exe -o"!curPath!" > nul
 	%exec% -Command "& { Write-Host "Extracting mpv.com from !mpvZip!" -ForegroundColor Green; }"
-	"!EXE7ZA!" e -r -y "!binPath!\!mpvZip!" mpv.com -o"!curPath!" > nul
+	"!EXE7ZA!" e -r -y "!tempPath!\!mpvZip!" mpv.com -o"!curPath!" > nul
 	if not "%mpvApi%" == "%mpvApi:shinchiro=%" (
 		%exec% -Command "& { Write-Host "Extracting d3dcompiler_43.dll from !mpvZip!" -ForegroundColor Green; }"
-		"!EXE7ZA!" e -r -y "!binPath!\!mpvZip!" d3dcompiler_43.dll -o"!curPath!" > nul
+		"!EXE7ZA!" e -r -y "!tempPath!\!mpvZip!" d3dcompiler_43.dll -o"!curPath!" > nul
 	)
-	del /Q "!binPath!\!mpvZip!" > nul
-)
-
-if not exist "!curPath!\temp" (
-	mkdir "!curPath!\temp" > nul
+	del /Q "!tempPath!\!mpvZip!" > nul
 )
 
 set dirs=fonts scripts script-opts
@@ -194,16 +201,18 @@ if not exist "!configPath!\MpvIptv.json" (
 	call :DownloadFile "MpvIptv.json"
 )
 
-if not exist "!configPath!\MpvIptv.conf" (
+if not exist "!configPath!\mpv.conf" (
 	call :DownloadFile "mpv.conf"
 )
 
 call :DownloadFile "MpvIptv.mp4"
 call :DownloadFile "fonts/modernz-icons.ttf"
+
 set scripts=modernz.lua MpvIptv.lua pip_lite.lua
 for %%f in (%scripts%) do (
 	call :DownloadFile "scripts/%%f"
 )
+
 set script-opts=dkjson.lua htmlEntities.lua modernz.conf modernz-locale.json MpvIptvGroups.lua MpvIptvString.lua MpvIptvUtf8.lua MpvIptvUtils.lua sha2.lua
 for %%f in (%script-opts%) do (
 	call :DownloadFile "script-opts/%%f"
@@ -213,12 +222,15 @@ pause
 goto :eof
 
 :DownloadFile
-if exist "!configPath!\%~1" (
+set "etag=%~1"
+set "etag=!etag:/=.!.etag"
+
+if exist "!configPath!\%~1" if exist "!tempPath!\!etag!" (
 	%exec% -Command "& { Write-Host "Updating %~1" -ForegroundColor Green; }"
-	"!EXECURL!" --compressed --no-progress-meter -RLo "!configPath!\%~1" --fail -z "!configPath!\%~1" "!configUrl!/%~1"
+	"!EXECURL!" --compressed --no-progress-meter --etag-save "!tempPath!\!etag!" --etag-compare "!tempPath!\!etag!" -RLo "!configPath!\%~1" --fail -z "!configPath!\%~1" "!configUrl!/%~1"
 ) else (
 	%exec% -Command "& { Write-Host "Downloading %~1" -ForegroundColor Green; }"
-	"!EXECURL!" --compressed --no-progress-meter -RLo "!configPath!\%~1" --fail "!configUrl!/%~1"
+	"!EXECURL!" --compressed --no-progress-meter --etag-save "!tempPath!\!etag!" -RLo "!configPath!\%~1" --fail "!configUrl!/%~1"
 )
 
 exit /b 1
