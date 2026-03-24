@@ -11,14 +11,16 @@ if %errorlevel% equ 0 (
 	set exec=powershell
 )
 
-%exec% -Command "& { Write-Host "!useragent! script v1.4.6" -ForegroundColor Green; }"
+%exec% -Command "& { Write-Host "!useragent! script v1.4.7" -ForegroundColor Green; }"
 
 set 7zrUrl=https://www.7-zip.org/a/7zr.exe
 set 7zaUrl=https://www.7-zip.org/a/7z2600-extra.7z
 set curlUrl=https://curl.se/windows/dl-8.19.0_4/curl-8.19.0_4-win64-mingw.zip
 set gzipUrl=https://github.com/ebiggers/libdeflate/releases/download/v1.25/libdeflate-1.25-windows-x86_64-bin.zip
 
-set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/refs/heads/main
+set mainUrl=https://raw.githubusercontent.com/check4game/MpvIptv/refs/heads/main
+::: MpvIptv v1.2.3
+set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/5eb7ffbd95b7400208b1f33a9fce85d2cbd1a8ec
 set configUrl=!srcUrl!/portable_config
 
 ::set mpvApi=https://api.github.com/repos/zhongfly/mpv-winbuild/releases/latest
@@ -100,7 +102,7 @@ if not exist "!EXECURL!" (
     exit /b 1
 )
 
-"!EXECURL!" --compressed --no-progress-meter --user-agent "!useragent!" -RLo "!tempPath!\MpvIptv.bat" --fail "!srcUrl!/MpvIptv.bat"
+"!EXECURL!" --compressed --no-progress-meter --user-agent "!useragent!" -RLo "!tempPath!\MpvIptv.bat" --fail "!mainUrl!/MpvIptv.bat"
 
 if exist "!tempPath!\MpvIptv.bat" (
     fc "!tempPath!\MpvIptv.bat" "!curPath!\MpvIptv.bat" > nul 2>&1
