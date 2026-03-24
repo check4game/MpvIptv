@@ -9,7 +9,7 @@ local ass = assdraw.ass_new()
  ]]
 
 local APP_NAME = "MpvIptv"
-local APP_VERSION = "v1.2.2"
+local APP_VERSION = "v1.2.3"
 local TITLE_PREFIX = APP_NAME .. " 📺"
 
 local APP_USER_AGENT = string.format("%s/%s (%s) %s/%s-%s", APP_NAME, APP_VERSION, jit.os, mp.get_property("mpv-version"):gsub(' ', '/'), jit.version, jit.version_num)
