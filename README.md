@@ -12,6 +12,10 @@
 1. Конфигурация списков m3u IPTV находится в файле portable_config\MpvIptv.json, можно добавлять свои.
 2. Списки по умолчанию взяты из репозитария https://github.com/smolnp/IPTVru
 
+## Программа для каналов IPTV
+1. Поддерживается EPG в формате xml или xml.gz
+2. Ссылка на файл EPG автоматически используется из файла со списком m3u IPTV каналов.
+
 ## Внешние скрипты и приложения:
 1. Mpv Player, https://github.com/mpv-player/mpv<br>
 исполняемые файлы актуальной версии загружаются из репозитария https://github.com/shinchiro/mpv-winbuild-cmake/releases<br>
