@@ -10,7 +10,7 @@
 
 ## Списки m3u IPTV потоков
 1. Конфигурация списков m3u IPTV находится в файле portable_config\MpvIptv.json, можно добавлять свои.
-2. Списку по умолчанию взяты из репозитария https://github.com/smolnp/IPTVru
+2. Списки по умолчанию взяты из репозитария https://github.com/smolnp/IPTVru
 
 ## Внешние скрипты и приложения:
 1. Mpv Player, https://github.com/mpv-player/mpv<br>
