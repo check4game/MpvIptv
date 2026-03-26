@@ -2,7 +2,7 @@
 @setlocal enabledelayedexpansion
 pushd %~dp0
 
-set useragent="MpvIptv-Updater-Script/1.5.0"
+set useragent="MpvIptv-Updater-Script/1.5.1"
 
 where pwsh >nul 2>nul
 if %errorlevel% equ 0 (
@@ -196,6 +196,8 @@ goto :eof
 set SCRIPT=^
 if (-not (Test-Path '%~1')) {^
 	Write-Host 'Downloading %~2' -ForegroundColor Green;^
+	$bWindows8 = (Get-CimInstance Win32_OperatingSystem).Caption -like '*Windows 8*';^
+	if ($bWindows8) { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; }^
 	Invoke-WebRequest -Uri '%~2' -UserAgent '!USERAGENT!' -OutFile '%~3';^
 }^
 ! 
@@ -252,6 +254,8 @@ if (!MVPEXIST!) {^
 	$gBuild =$matches[1];^
 	if ($lBuild -match $gBuild) { $bDownload=$false; } else { Write-Host 'Local build is ' $lBuild -ForegroundColor Green; }^
 }^
+$bWindows8 = (Get-CimInstance Win32_OperatingSystem).Caption -like '*Windows 8*';^
+if ($bWindows8) { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; }^
 if ($bDownload) {^
 	Write-Host 'Downloading' $downloadUrl -ForegroundColor Green;^
 	Invoke-WebRequest -Uri $downloadUrl -UserAgent '!USERAGENT!' -OutFile '!tempPath!\!mpvZip!';^
