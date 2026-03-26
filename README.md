@@ -23,7 +23,7 @@
 Набор скриптов находится в репозитарии MpvIptv, базируется на версии ModernZ v0.3.1 с небольшими доработками<br>
 5. Библиотека [dkjson.lua](https://dkolf.de/dkjson-lua), v2.8, находится в репозитарии MpvIptv<br>
 6. Библиотека [htmlEntities.lua](https://github.com/TiagoDanin/htmlEntities-for-lua), v1.3.1, находится в репозитарии MpvIptv<br>
-7. Библиотека [sha2.lua](https://github.com/Egor-Skriptunoff/pure_lua_SHA), v12 (2022-02-23), находится в репозитарии MpvIptv<br>
+7. Библиотека [sha2.lua](https://github.com/Egor-Skriptunoff/pure_lua_SHA), v12/2022-02-23, находится в репозитарии MpvIptv<br>
 8. Утилита [7zr.exe](https://www.7-zip.org/a/7zr.exe), загружается при установке<br>
 9. Утилита [7za.exe](https://www.7-zip.org/a/7z2600-extra.7z), загружается при установке из архива<br>
 10. Утилита [curl.exe](https://curl.se/windows/dl-8.19.0_4/curl-8.19.0_4-win64-mingw.zip), загружается при установке из архива<br>
