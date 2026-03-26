@@ -24,10 +24,10 @@
 5. Библиотека dkjson.lua, v2.8, https://dkolf.de/dkjson-lua, находится в репозитарии MpvIptv<br>
 6. Библиотека htmlEntities.lua, v1.3.1, https://github.com/TiagoDanin/htmlEntities-for-lua, находится в репозитарии MpvIptv<br>
 7. Библиотека sha2.lua, VERSION: 12 (2022-02-23), https://github.com/Egor-Skriptunoff/pure_lua_SHA, находится в репозитарии MpvIptv<br>
-8. Утилита 7zr.exe, загружается при установке https://www.7-zip.org/a/7zr.exe<br>
-9. Утилита 7za.exe, загружается при установке из архива https://www.7-zip.org/a/7z2600-extra.7z<br>
-10. Утилита curl.exe, загружается при установке из архива https://curl.se/windows/dl-8.19.0_4/curl-8.19.0_4-win64-mingw.zip<br>
-11. Утилита gzip.exe, загружается при установке из архива https://github.com/ebiggers/libdeflate/releases/download/v1.25/libdeflate-1.25-windows-x86_64-bin.zip<br>
+8. Утилита [7zr.exe](https://www.7-zip.org/a/7zr.exe), загружается при установке<br>
+9. Утилита [7za.exe](https://www.7-zip.org/a/7z2600-extra.7z), загружается при установке из архива<br>
+10. Утилита [curl.exe](https://curl.se/windows/dl-8.19.0_4/curl-8.19.0_4-win64-mingw.zip), загружается при установке из архива<br>
+11. Утилита [gzip.exe](https://github.com/ebiggers/libdeflate/releases/download/v1.25/libdeflate-1.25-windows-x86_64-bin.zip), загружается при установке из архива <br>
 
 
 
