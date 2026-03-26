@@ -16,7 +16,7 @@
 1. Поддерживается EPG в формате xml или xml.gz
 2. Ссылка на файл EPG автоматически используется из файла со списком m3u IPTV потоков.
 
-## Внешние скрипты, утилиты и приложения:
+## Внешние скрипты, библиотеки, утилиты и приложения:
 1. Mpv Player, https://github.com/mpv-player/mpv<br>
 исполняемые файлы актуальной версии загружаются из репозитария https://github.com/shinchiro/mpv-winbuild-cmake/releases<br>
 3. ModernZ script, Атернативная OSC для Mpv Player, https://github.com/Samillion/ModernZ<br>
