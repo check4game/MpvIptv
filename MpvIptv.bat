@@ -2,7 +2,7 @@
 @setlocal enabledelayedexpansion
 pushd %~dp0
 
-set useragent="MpvIptv-Updater-Script/1.5.1"
+set useragent="MpvIptv-Updater-Script/1.5.2"
 
 where pwsh >nul 2>nul
 if %errorlevel% equ 0 (
@@ -47,19 +47,19 @@ if not exist "!tempPath!" (
 	mkdir "!tempPath!" > nul
 )
 
-call :CheckAndDownloadFile "!tempPath!\MpvIptv.bat.dummy" "!mainUrl!/MpvIptv.bat" "!tempPath!\MpvIptv.bat"
+call :CheckAndDownloadFile "!tempPath!\MpvIptv.bat.dummy" "!mainUrl!/MpvIptv.bat" "!tempPath!\MpvIptv.bat.temp"
 
-if exist "!tempPath!\MpvIptv.bat" (
-    fc "!tempPath!\MpvIptv.bat" "!curPath!\MpvIptv.bat" > nul 2>&1
+if exist "!tempPath!\MpvIptv.bat.temp" (
+    fc "!tempPath!\MpvIptv.bat.temp" "!curPath!\MpvIptv.bat" > nul 2>&1
     if errorlevel 1 (
-		call :ShowMessage "New version MpvIptv.bat"
-        copy /Y "!tempPath!\MpvIptv.bat" "!curPath!\MpvIptv.bat" > nul
-	    del /Q "!tempPath!\MpvIptv.bat" > nul 2>&1
+		call :ShowMessage "New version found MpvIptv.bat"
+        copy /Y "!tempPath!\MpvIptv.bat.temp" "!curPath!\MpvIptv.bat" > nul
+	    del /Q "!tempPath!\MpvIptv.bat.temp" > nul 2>&1
 		call "!curPath!\MpvIptv.bat" %*
         exit /b 1
     )
 	call :ShowMessage !USERAGENT!
-    del /Q "!tempPath!\MpvIptv.bat" > nul 2>&1
+    del /Q "!tempPath!\MpvIptv.bat.temp" > nul 2>&1
 ) else (
 	call :ShowMessage !USERAGENT!
 )
