@@ -2,7 +2,11 @@
   "epgExt":["https://iptvx.one/epg/epg.xml.gz"],
   "m3uInit":[{
       "url":"https://smolnp.github.io/IPTVru/IPTVstable.m3u8",
-      "name":"smolnp.github.io (Стабильный)"
+      "name":"smolnp.github.io (Стабильный) EpgLite"
+    },{
+      "url":"https://smolnp.github.io/IPTVru/IPTVru.m3u",
+      "name":"smolnp.github.io (Основной) EpgLite",
+      "epgUrl","https://iptvx.one/epg/epg_lite.xml.gz"
     },{
       "url":"https://smolnp.github.io/IPTVru/IPTVru.m3u",
       "name":"smolnp.github.io (Основной)"
