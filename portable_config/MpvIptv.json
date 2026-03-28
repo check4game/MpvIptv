@@ -1,5 +1,5 @@
 {
-  "epgExt":["https://iptvx.one/epg/epg.xml.gz"],
+  "epgExt":["https://iptvx.one/epg/epg.xml.gz", "https://iptvx.one/epg/epg_lite.xml.gz"],
   "m3uInit":[{
       "url":"https://smolnp.github.io/IPTVru/IPTVstable.m3u8",
       "name":"smolnp.github.io (Стабильный) EpgLite"

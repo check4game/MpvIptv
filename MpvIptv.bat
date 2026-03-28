@@ -2,7 +2,7 @@
 @setlocal enabledelayedexpansion
 pushd %~dp0
 
-set useragent="MpvIptv-Updater-Script/1.5.2"
+set useragent="MpvIptv-Updater-Script/1.5.3"
 
 where pwsh >nul 2>nul
 if %errorlevel% equ 0 (
@@ -13,21 +13,34 @@ if %errorlevel% equ 0 (
 
 set ps=%ps% -NoProfile -NoLogo -ExecutionPolicy Bypass -Command
 
+for /f %%i in ('%ps% "((Get-CimInstance Win32_OperatingSystem).Caption) -like '*Windows 1*'"') do set "Windows1X=%%i"
+
+if not "!Windows1X!" == "True" (
+	call :ShowErrorMessage "Only Windows 10 or Windows 11"
+	goto :END
+)
+
 set 7zrUrl=https://www.7-zip.org/a/7zr.exe
 set 7zaUrl=https://www.7-zip.org/a/7z2600-extra.7z
 set curlUrl=https://curl.se/windows/dl-8.19.0_4/curl-8.19.0_4-win64-mingw.zip
 set gzipUrl=https://github.com/ebiggers/libdeflate/releases/download/v1.25/libdeflate-1.25-windows-x86_64-bin.zip
 
+:: direct link
 set mpvUrl=https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20260307/mpv-x86_64-20260307-git-f9190e5.7z
 :set mpvUrl=https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20260307/mpv-x86_64-v3-20260307-git-f9190e5.7z
 
+:: repos api link
+::set mpvApi=https://api.github.com/repos/zhongfly/mpv-winbuild/releases/latest
+set mpvApi=https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/releases/latest
+
+:: main repos link
 set mainUrl=https://raw.githubusercontent.com/check4game/MpvIptv/refs/heads/main
 ::: MpvIptv v1.2.3
 set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/5eb7ffbd95b7400208b1f33a9fce85d2cbd1a8ec
-set configUrl=!srcUrl!/portable_config
+::: MpvIptv v1.2.4
+:set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/5eb7ffbd95b7400208b1f33a9fce85d2cbd1a8ec
 
-::set mpvApi=https://api.github.com/repos/zhongfly/mpv-winbuild/releases/latest
-set mpvApi=https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/releases/latest
+set configUrl=!srcUrl!/portable_config
 
 set curPath=%~dp0
 set binPath=!curPath!bin
@@ -48,7 +61,6 @@ if not exist "!tempPath!" (
 )
 
 call :CheckAndDownloadFile "!tempPath!\MpvIptv.bat.dummy" "!mainUrl!/MpvIptv.bat" "!tempPath!\MpvIptv.bat.temp"
-
 if exist "!tempPath!\MpvIptv.bat.temp" (
     fc "!tempPath!\MpvIptv.bat.temp" "!curPath!\MpvIptv.bat" > nul 2>&1
     if errorlevel 1 (
@@ -67,8 +79,7 @@ if exist "!tempPath!\MpvIptv.bat.temp" (
 call :CheckAndDownloadFile "!EXE7ZR!" "!7zrUrl!" "!EXE7ZR!"
 if not exist "!EXE7ZR!" (
 	call :ShowErrorMessage "no 7zr.exe in !binPath!"
-    pause
-    exit /b 1
+	goto :END
 ) else (
 	call :ShowMessage "7zr.exe OK in !binPath!"
 )
@@ -82,8 +93,7 @@ if exist "!tempPath!\!7zaZip!" (
 )
 if not exist "!EXE7ZA!" (
 	call :ShowErrorMessage "no 7za.exe in !binPath!"
-    pause
-    exit /b 1
+	goto :END
 ) else (
 	call :ShowMessage "7za.exe OK in !binPath!"
 )
@@ -97,8 +107,7 @@ if exist "!tempPath!\!curlZip!" (
 )
 if not exist "!EXECURL!" (
 	call :ShowErrorMessage "no curl.exe in !binPath!"
-    pause
-    exit /b 1
+	goto :END
 ) else (
 	call :ShowMessage "curl.exe OK in !binPath!"
 )
@@ -112,8 +121,7 @@ if exist "!tempPath!\!gzipZip!" (
 )
 if not exist "!EXEGZIP!" (
 	call :ShowErrorMessage "no gzip.exe in !binPath!"
-    pause
-    exit /b 1
+	goto :END
 ) else (
 	call :ShowMessage "gzip.exe OK in !binPath!"
 )
@@ -121,17 +129,18 @@ if not exist "!EXEGZIP!" (
 set mpvZip=mpv.last.7z
 
 if defined mpvUrl (
-	set bDownloadMpv=true
+	for /f %%i in ('%ps% "('!mpvUrl!' -split '/')[-1]"') do set "mpvZip=%%i"
+	set bDownloadMpv=True
 	if not "%mpvUrl%" == "%mpvUrl:shinchiro=%" (
 		if exist "!curPath!\mpv.com" if exist "!curPath!\mpv.exe" if exist "!curPath!\d3dcompiler_43.dll" (
-			set bDownloadMpv=false
+			set bDownloadMpv=False
 		)
 	) else (
 		if exist "!curPath!\mpv.com" if exist "!curPath!\mpv.exe" (
-			set bDownloadMpv=false
+			set bDownloadMpv=False
 		)
 	)
-	if "!bDownloadMpv!" == "true" (
+	if "!bDownloadMpv!" == "True" (
 		call :CheckAndDownloadFile "!tempPath!\!mpvZip!.dummy" "!mpvUrl!" "!tempPath!\!mpvZip!"
 	)
 ) else (
@@ -149,6 +158,22 @@ if exist "!tempPath!\!mpvZip!" (
 		"!EXE7ZA!" e -r -y "!tempPath!\!mpvZip!" d3dcompiler_43.dll -o"!curPath!" > nul
 	)
 	del /Q "!tempPath!\!mpvZip!" > nul
+)
+
+set bMpvOK=False
+if not "%mpvUrl%" == "%mpvUrl:shinchiro=%" (
+	if exist "!curPath!\mpv.com" if exist "!curPath!\mpv.exe" if exist "!curPath!\d3dcompiler_43.dll" (
+		set bMpvOK=True
+	)
+) else (
+	if exist "!curPath!\mpv.com" if exist "!curPath!\mpv.exe" (
+		set bMpvOK=True
+	)
+)
+
+if "!bMpvOK!" == "False" (
+	call :ShowErrorMessage "no mpv in !curPath!"
+	goto :END
 )
 
 set folders=fonts scripts script-opts
@@ -179,8 +204,7 @@ for %%f in (%script-opts%) do (
 	call :SyncOrDownloadFile "script-opts/%%f"
 )
 
-pause
-goto :eof
+goto :END
 
 :ShowMessage
 %ps% ". { Write-Host '%~1' -ForegroundColor Green; }"
@@ -196,8 +220,6 @@ goto :eof
 set SCRIPT=^
 if (-not (Test-Path '%~1')) {^
 	Write-Host 'Downloading %~2' -ForegroundColor Green;^
-	$bWindows8 = (Get-CimInstance Win32_OperatingSystem).Caption -like '*Windows 8*';^
-	if ($bWindows8) { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; }^
 	Invoke-WebRequest -Uri '%~2' -UserAgent '!USERAGENT!' -OutFile '%~3';^
 }^
 ! 
@@ -221,9 +243,7 @@ exit /b 1
 goto :eof
 
 :CheckMpvLastBuild
-
 set MVPEXIST=$false
-
 if not "%mpvApi%" == "%mpvApi:shinchiro=%" (
 	if exist "!curPath!\mpv.com" if exist "!curPath!\mpv.exe" if exist "!curPath!\d3dcompiler_43.dll" (
 		set MVPEXIST=$true
@@ -254,8 +274,6 @@ if (!MVPEXIST!) {^
 	$gBuild =$matches[1];^
 	if ($lBuild -match $gBuild) { $bDownload=$false; } else { Write-Host 'Local build is ' $lBuild -ForegroundColor Green; }^
 }^
-$bWindows8 = (Get-CimInstance Win32_OperatingSystem).Caption -like '*Windows 8*';^
-if ($bWindows8) { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; }^
 if ($bDownload) {^
 	Write-Host 'Downloading' $downloadUrl -ForegroundColor Green;^
 	Invoke-WebRequest -Uri $downloadUrl -UserAgent '!USERAGENT!' -OutFile '!tempPath!\!mpvZip!';^
@@ -265,3 +283,7 @@ if ($bDownload) {^
 
 exit /b 1
 goto :eof
+
+:END
+pause
+exit /b 1
