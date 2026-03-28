@@ -2,7 +2,7 @@
 @setlocal enabledelayedexpansion
 pushd %~dp0
 
-set useragent="MpvIptv-Updater-Script/1.5.3"
+set useragent="MpvIptv-Updater-Script/1.5.4"
 
 where pwsh >nul 2>nul
 if %errorlevel% equ 0 (
@@ -231,7 +231,7 @@ goto :eof
 set "etag=%~1"
 set "etag=!etag:/=.!.etag"
 
-if exist "!tempPath!\!etag!" (
+if exist "!configPath!\%~1" if exist "!tempPath!\!etag!" (
 	%ps% ". { Write-Host 'Syncing %~1' -ForegroundColor Green; }"
 	"!EXECURL!" --compressed --no-progress-meter --user-agent "!USERAGENT!" --etag-save "!tempPath!\!etag!" --etag-compare "!tempPath!\!etag!" -RLo "!configPath!\%~1" --fail "!configUrl!/%~1"
 ) else (
