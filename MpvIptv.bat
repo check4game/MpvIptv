@@ -2,7 +2,7 @@
 @setlocal enabledelayedexpansion
 pushd %~dp0
 
-set useragent="MpvIptv-Updater-Script/1.5.4"
+set useragent="MpvIptv-Updater-Script/1.5.5"
 
 where pwsh >nul 2>nul
 if %errorlevel% equ 0 (
@@ -38,7 +38,7 @@ set mainUrl=https://raw.githubusercontent.com/check4game/MpvIptv/refs/heads/main
 ::: MpvIptv v1.2.3
 set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/5eb7ffbd95b7400208b1f33a9fce85d2cbd1a8ec
 ::: MpvIptv v1.2.4
-:set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/5eb7ffbd95b7400208b1f33a9fce85d2cbd1a8ec
+set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/8a8c49ed7831e67957b4ca52cdce632cca9a0443
 
 set configUrl=!srcUrl!/portable_config
 
