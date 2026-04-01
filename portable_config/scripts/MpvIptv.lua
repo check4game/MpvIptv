@@ -9,7 +9,7 @@ local ass = assdraw.ass_new()
  ]]
 
 local APP_NAME = "MpvIptv"
-local APP_VERSION = "v1.2.3"
+local APP_VERSION = "v1.2.4"
 local TITLE_PREFIX = APP_NAME .. " 📺"
 
 local APP_USER_AGENT = string.format("%s/%s (%s) %s/%s-%s", APP_NAME, APP_VERSION, jit.os, mp.get_property("mpv-version"):gsub(' ', '/'), jit.version, jit.version_num)
@@ -166,34 +166,36 @@ function parse_epg(epg_file_name, epg_file_path)
     local lstart = ctime - day * 3 - 3 * 60 * 60
     local lstop = ctime + day * 1
 
-    for programme in content:gmatch("<programme[^>]->.-</programme>") do
-        local id = programme:match("channel=\"([^\"]+)\"")
+    for programme in content:gmatch("<programme.->.-</programme>") do
+
+        local id = programme:match('channel="(.-)"')
 
         if not id then goto continue end
         
-        local start = string.epg_time_to_seconds(programme:match("start=\"([^\"]+)\""))
+        local start = string.epg_time_to_seconds(programme:match('start="(.-)"'))
         if start < lstart then goto continue end
 
-        local stop = string.epg_time_to_seconds(programme:match("stop=\"([^\"]+)\""))
+        local stop = string.epg_time_to_seconds(programme:match('stop="(.-)"'))
         if stop > lstop then goto continue end
 
-        local title = programme:match('<title[^>]*>(.-)</title>') or "N/A"
+        local title = programme:match('<title.->(.-)</title>') or "N/A"
+        if (stop - start) > day then
+             title = "24+/" .. MpvIptvUtils.DecodeText(title)
+        end
+
+        -- убрали в обработку при показе
+        --title = MpvIptvUtils.DecodeText(title)
+
+        local desc = programme:match('<desc.->(.-)</desc>') or "N/A"
+        -- убрали в обработку при показе
+        --desc = MpvIptvUtils.DecodeText(desc)
         
-        title = htmlEntities.decode(title):gsub("^⋗ ", ""):gsub("\\n", " "):gsub("%s+", " ") -- double space
-
-        local desc = programme:match('<desc[^>]*>(.-)</desc>') or "N/A"
-
-        desc = htmlEntities.decode(desc):gsub("\\n", " "):gsub("%s+", " ") -- double space
-
         if not epg_programmes[id] then epg_programmes[id] = {} end
-
-        if (stop - start) > day then title = "24+/" .. title end
-
         table.insert(epg_programmes[id], {start=start, stop=stop, title=title, desc=desc})
 
         programme_cnt = programme_cnt + 1
 
-        if programme_cnt % 100000 == 0 then
+        if programme_cnt % 50000 == 0 then
             collectgarbage_wrapper()
         end
 
@@ -201,9 +203,9 @@ function parse_epg(epg_file_name, epg_file_path)
     end
 
     local programmes_msg = string.format("Загружено %d программ передач из '%s' за %d секунд", programme_cnt, epg_file_name, os.time() - ctime)
-
     msg.info(programmes_msg)
 
+    pcontent = nil
     collectgarbage_wrapper()
 
     epg_channels = {}
@@ -249,10 +251,9 @@ function parse_epg(epg_file_name, epg_file_path)
     end
     
     local channels_msg = string.format("Загружено %d каналов, %d названий из '%s'", channel_cnt, display_cnt, epg_file_name)
-
     msg.info(channels_msg)
 
-    content = ""
+    content = nil
     collectgarbage_wrapper()
 
     epg_channels[DONE_FLAG] = DONE_FLAG
@@ -531,23 +532,29 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
 
             for i = 0, 6 do yearGroups[year - i] = {} end
             
+            unique_filter = {}
+
             for gname, glist in pairs(channel_groups) do
                 for _, entry in ipairs(glist) do
                     if not entry.bAdditional then
-                        entry = copy_table(entry)
-                        table.insert(allGroup, copy_table(entry))
-
-                        for year, group in pairs(yearGroups) do
-                            if entry.year == year or entry.name:find(year) then
-                                entry = copy_table(entry)
-                                table.insert(group, copy_table(entry))
-                                break
-                            end
+                        key = entry.name .. entry.urls[1].url
+                        if not unique_filter[key] then
+                            unique_filter[key] = true
+                            entry = copy_table(entry)
+                            table.insert(allGroup, copy_table(entry))
+                            for year, group in pairs(yearGroups) do
+                                if entry.year == year or entry.name:find(year) then
+                                    entry = copy_table(entry)
+                                    table.insert(group, copy_table(entry))
+                                    break
+                                end
+                            end                            
                         end
                     end
                 end
             end
 
+            unique_filter = nil
             channel_groups["«ПОТОКИ ОБЩИЙ СПИСОК»"] = allGroup
             allGroup = nil
 
@@ -557,6 +564,8 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
                 end
                 yearGroups[year] = nil
             end
+
+            yearGroups = nil
 
             -- удаляем порожденые группы которые полностью совпадают с парентом
             for gname, glist in pairs(channel_groups) do
@@ -616,7 +625,7 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
                             local number = serial.name:match(" S(%d+)$")
 
                             for _, episode in ipairs(info) do
-                                table.insert(serial.urls, {episode=episode.name:match("(S%d+E%d+)$"), url=episode.urls[1].url})
+                                table.insert(serial.urls, {episode=e, url=episode.urls[1].url})
                             end
 
                             if serial.year > 1000 then
@@ -749,15 +758,8 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
     
     channel_groups[DONE_FLAG] = DONE_FLAG
 
-    msg.info(string.format("Обнаружено %d групп и %d ссылок на потоки в '%s'", #menu_state.group_names, channel_cnt, m3u_file_name))
+    msg.info(string.format("Загружено %d групп и %d ссылок на потоки в '%s'", #menu_state.group_names, channel_cnt, m3u_file_name))
 
---[[     
-    if GLOBAL_IS_IPTV then
-        msg.info(string.format("Загружено %d групп и %d каналов из '%s'", #menu_state.group_names, channel_cnt, m3u_file_name))
-    else
-        msg.info(string.format("Загружено %d групп и %d фильмов/сериалов/тв шоу из '%s'", #menu_state.group_names, channel_cnt, m3u_file_name))
-    end
- ]]    
     return true
 end
 
@@ -963,23 +965,17 @@ local function makeup(fs, str)
     return string.format("{\\fs%d}%s", fs, str)
 end
 
-local function IsClickValid(mouse)
+local function IsMouseValid(mouse)
 
     if not mouse then
         return true --not mp.get_property_bool("osc")
     end
 
-    local x,y = mp.get_mouse_pos() --mp.get_property_native("mouse-pos", {x=0, y=0})
+    local x,y = mp.get_mouse_pos()
     local width, height, aspect = mp.get_osd_size()
-    --local width, height = mp.get_property_native("osd-dimensions")
 
-    --mp.osd_message(string.format("X: %d, Y: %d", event.x, event.y), 2)
-
-    --msg.warn(string.format("osd: %d,%d,%s screen: %d,%d, pos: %d,%d", width, height, aspect, screen.w, screen.h, pos.y, pos.x))
-    --mp.osd_message(string.format("osd: %d,%d,%s, pos: %d,%d", width, height, aspect, y, x), 10)
-    
     --return not mp.get_property_bool("osc") and pos.y < (screen.h * 3 / 4) and pos.x < (screen.w * 2 / 3)
-    return y < (height * 3 / 4) and x < (width * 3 / 4)
+    return y > 100 and y < (height * 3 / 4) and x < (width * 3 / 4)
 end            
 
 function make_header(text)
@@ -1031,7 +1027,7 @@ function show_groups_menu(page)
     end)
 
     local show_channels = function(mouse)
-        if IsClickValid(mouse) and current_group.idx ~= 0 then
+        if IsMouseValid(mouse) and current_group.idx ~= 0 then
             menu_state.channel_page = 1
             select_channel(menu_state.group_names[current_group.idx], 1)
         end
@@ -1041,7 +1037,7 @@ function show_groups_menu(page)
     mp.add_key_binding("MBTN_LEFT", "show_channels_menu_mouse", function() show_channels(true) end)
     
     local group_prev = function(mouse)
-        if IsClickValid(mouse) then
+        if IsMouseValid(mouse) then
 
             if current_group.page ~= page then
                 current_group.page = page
@@ -1067,7 +1063,7 @@ function show_groups_menu(page)
     mp.add_forced_key_binding("WHEEL_UP", "item_prev_mouse", function() group_prev(true) end)
     
     local group_next = function(mouse)
-        if IsClickValid(mouse) then
+        if IsMouseValid(mouse) then
 
             if current_group.page ~= page then
                 current_group.page = page
@@ -1187,7 +1183,7 @@ function show_channels_menu(group_name, page)
                         cprogramme = makeup(DEFAULT_FONT_SIZE,
                             string.format("%s%s %s %s", padding, channel.symbol,
                             string.format("%02d:%02d-%02d:%02d", start.hour, start.min, stop.hour, stop.min),
-                            info.title:gsub("^⋗ ", "")))
+                            MpvIptvUtils.DecodeText(info.title)))
                         break
                     end
                 end
@@ -1203,7 +1199,7 @@ function show_channels_menu(group_name, page)
                     cprogramme = makeup(DEFAULT_FONT_SIZE,
                         string.format("%s%s %s %s", padding, channel.symbol,
                         string.format("%02d/%02d/%04d, %02d:%02d-%02d:%02d", start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min),
-                        info.title:gsub("^⋗ ", "")))
+                        MpvIptvUtils.DecodeText(info.title)))
                 end
 
                 cchannel = cchannel .. cprogramme
@@ -1233,24 +1229,20 @@ function show_channels_menu(group_name, page)
                                 local start = os.date("*t", info.start)
                                 local stop = os.date("*t", info.stop)
 
-                                local desc = info.desc or ""
+                                local desc = MpvIptvUtils.DecodeText(info.desc or "")
 
                                 if idx == current_channel.programme_idx then
                                     data = data .. fmt:format(DEFAULT_FONT_SIZE, "54E5B2", --"FF00FF",
                                                 start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min,
-                                                DEFAULT_FONT_SIZE, info.title,
-                                                "54E5B2", DEFAULT_FONT_SIZE, desc:gsub('\n',''))
-
-                                        --if info.desc then data = data .. "\n\n" else data = data .. "\n" end
+                                                DEFAULT_FONT_SIZE, MpvIptvUtils.DecodeText(info.title),
+                                                "54E5B2", DEFAULT_FONT_SIZE, desc)
                                 else
                                     if info.desc then desc = "..." end
 
                                     data = data .. fmt:format(DEFAULT_FONT_SIZE - 3, "00FFFF",
                                                 start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min,
-                                                DEFAULT_FONT_SIZE, info.title,
-                                                "FFFFFF", DEFAULT_FONT_SIZE - 2, desc:gsub('\n',''))
-
-                                    --data = data .. "\n"
+                                                DEFAULT_FONT_SIZE, MpvIptvUtils.DecodeText(info.title),
+                                                "FFFFFF", DEFAULT_FONT_SIZE - 2, desc)
                                 end
 
                                 data = data .. "\n"
@@ -1282,7 +1274,7 @@ function show_channels_menu(group_name, page)
                         mp.add_forced_key_binding("WHEEL_DOWN", "item_next_mouse", programme_next)
 
                         local back_to_group = function(mouse)
-                            if IsClickValid(mouse) then
+                            if IsMouseValid(mouse) then
                                 show_channels_menu(menu_state.group_name, menu_state.channel_page)
                             end
                         end
@@ -1291,7 +1283,7 @@ function show_channels_menu(group_name, page)
                         mp.add_key_binding("MBTN_RIGHT", "back_to_group_mouse", function() back_to_group(true) end)
 
                         local play_channel = function(mouse)
-                            if IsClickValid(mouse) then
+                            if IsMouseValid(mouse) then
                                 play_channel(group_name, global_index, channel.tvg_id)
                             end
                         end
@@ -1300,7 +1292,7 @@ function show_channels_menu(group_name, page)
                         mp.add_key_binding("MBTN_LEFT", "play_channel_mouse", function() play_channel(true) end)
 
                         osd_overlay.hidden = false
-                        osd_overlay.data = data
+                        osd_overlay.data = "\\h\n\\h\n"..data
                         osd_overlay:update()
                     end
 
@@ -1320,7 +1312,7 @@ function show_channels_menu(group_name, page)
     end)
     
     local play_channel = function(mouse)
-        if IsClickValid(mouse) and current_channel.idx >= current_channel.start_idx and current_channel.idx <= current_channel.end_idx then
+        if IsMouseValid(mouse) and current_channel.idx >= current_channel.start_idx and current_channel.idx <= current_channel.end_idx then
             current_channel.programme_idx = 0
             play_channel(group_name, current_channel.idx, page_channels[current_channel.idx - start_idx + 1].tvg_id)
         end
@@ -1333,7 +1325,7 @@ function show_channels_menu(group_name, page)
     current_channel.end_idx = start_idx + #page_channels - 1
 
     local channel_prev = function(mouse)
-        if IsClickValid(mouse) then
+        if IsMouseValid(mouse) then
             if current_channel.idx < current_channel.start_idx or current_channel.idx > current_channel.end_idx then
                 select_channel(group_name, current_channel.end_idx)
             elseif current_channel.idx > current_channel.start_idx then
@@ -1352,7 +1344,7 @@ function show_channels_menu(group_name, page)
     mp.add_forced_key_binding("WHEEL_UP", "item_prev_mouse", function() channel_prev(true) end)
     
     local channel_next = function(mouse)
-        if IsClickValid(mouse) then
+        if IsMouseValid(mouse) then
             if current_channel.idx < current_channel.start_idx or current_channel.idx > current_channel.end_idx then
                 select_channel(group_name, current_channel.start_idx)
             elseif current_channel.idx < current_channel.end_idx then
@@ -1418,7 +1410,7 @@ function setup_pagination_navigation(type, current_page, total_pages, change_pag
     if type == "channels" then
 
         local back_to_group = function(mouse)
-            if IsClickValid(mouse) then
+            if IsMouseValid(mouse) then
                 show_groups_menu(menu_state.group_page)
                 --menu_state.group_name = ""
             end
@@ -1429,7 +1421,7 @@ function setup_pagination_navigation(type, current_page, total_pages, change_pag
 
     else
         local hide = function(mouse)
-            if IsClickValid(mouse) then
+            if IsMouseValid(mouse) then
                 mp.remove_key_binding("back_to_group")
                 mp.remove_key_binding("back_to_group_mouse")
                 hide_menu()

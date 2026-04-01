@@ -4,6 +4,8 @@ local mp = require 'mp'
 local msg = require 'mp.msg'
 local utils = require 'mp.utils'
 
+local htmlEntities = require 'htmlEntities'
+
 package.path = mp.command_native({ "expand-path", "~~/script-opts/?.lua;" }) .. package.path
 
 local IPTV_BIN_DIR  = mp.command_native({ "expand-path", "~~/../bin/" })
@@ -14,6 +16,10 @@ local hash = require('sha2').md5
 local json_encode = require('dkjson').encode
 utils.format_json = function(tbl)
     return json_encode (tbl, { indent = true })
+end
+
+function MpvIptvUtils.hash(str)
+    return hash(str)
 end
 
 local function remove_file(file_path)
@@ -85,6 +91,10 @@ local function is_gzip_file(checkFile)
     file:close()
 
     return (b1 == 0x1F) and (b2 == 0x8B)
+end
+
+function MpvIptvUtils.DecodeText(text)
+    return htmlEntities.decode(text):gsub("^⋗ ", ""):gsub("\\n", " "):gsub('\n', ' '):gsub("%s+", " ") -- double space
 end
 
 function MpvIptvUtils.ReadAllStrings(file_path)
@@ -241,8 +251,16 @@ function MpvIptvUtils.GetFilePath(url, bEpg, bGzip)
      return utils.join_path(IPTV_TEMP_DIR, MpvIptvUtils.GetFileName(url, bEpg, bGzip))
 end
 
+local function isFileUrl(url)
+    return url:match("^file://")
+end
+
 function MpvIptvUtils.GetName(url)
-    return url:match("://([^:/]+)") ..'.' .. hash(url)
+    if isFileUrl(url) then
+        return url:match("([^/\\]+)$") ..'.' .. hash(url)
+    else
+        return url:match("://([^:/]+)") ..'.' .. hash(url)
+    end
 end
 
 function MpvIptvUtils.GetFileName(url, bEpg, bGzip)
@@ -258,7 +276,7 @@ function MpvIptvUtils.GetFileName(url, bEpg, bGzip)
     end
 end
 
-local urlTimeout, epgTimeout = 120, 720
+local urlTimeout, epgTimeout, fileTimeout = 120, 720, 0
 
 function MpvIptvUtils.LoadAndUpdatePlaylistAndEpg(config, configFile, bReload)
 
@@ -293,7 +311,10 @@ function MpvIptvUtils.LoadAndUpdatePlaylistAndEpg(config, configFile, bReload)
                         local entry = {
                             name = initEntry.name,
                             url = initEntry.url,
-                            timeout=initEntry.urlTimeout and initEntry.urlTimeout or urlTimeout,
+
+                            --timeout=initEntry.urlTimeout and initEntry.urlTimeout or urlTimeout,
+                            timeout=initEntry.urlTimeout and initEntry.urlTimeout or (isFileUrl(initEntry.url) and fileTimeout or urlTimeout),
+
                             epgTimeout=initEntry.epgTimeout and initEntry.epgTimeout or epgTimeout,
                             isEpg = false
                         }
@@ -431,24 +452,31 @@ function MpvIptvUtils.DownloadLinks(links, index, config, configFile, bReload)
         msg.info("Загружаем из "..url)
     end
 
-    curl_args = { curl,
-        '--compressed',
-        '--no-progress-meter',
-        --'--trace-ascii', traceFile,
-        --'--trace-time', '--trace-ascii', traceFile,
-        '--etag-save', etagFile,
-        '-D', headerFile,
-        '-RLo', resultFile..".temp",
-        '--fail'}
-
+    if not isFileUrl(url) then
+        curl_args = { curl,
+            '--compressed',
+            '--no-progress-meter',
+            --'--trace-ascii', traceFile,
+            --'--trace-time', '--trace-ascii', traceFile,
+            '--etag-save', etagFile,
+            '-D', headerFile,
+            '-RLo', resultFile..".temp",
+            '--fail'}
+    else
+        curl_args = { curl,
+            '--no-progress-meter',
+            '-RLo', resultFile..".temp",
+            '--fail'}
+    end
+    
     --table.insert(curl_arg, "--http1.1") -- протокол
 
-    if resultFileTime and bReload ~= 3 then
+    if resultFileTime and bReload ~= 3 and not isFileUrl(url) then
         table.insert(curl_args, '-z')
         table.insert(curl_args, resultFile)
     end
 
-    if bEtagFileHasData and bReload ~= 3 then
+    if bEtagFileHasData and bReload ~= 3 and not isFileUrl(url) then
         table.insert(curl_args, '--etag-compare')
         table.insert(curl_args, etagFile)
     end
@@ -506,7 +534,6 @@ function MpvIptvUtils.DownloadLinks(links, index, config, configFile, bReload)
         end
 
         MpvIptvUtils.DownloadLinks(links, index + 1, config, configFile, bReload)
-
     end)
 end
 
