@@ -9,10 +9,11 @@ local ass = assdraw.ass_new()
  ]]
 
 local APP_NAME = "MpvIptv"
-local APP_VERSION = "v1.2.4"
+local APP_VERSION = "v1.2.5"
 local TITLE_PREFIX = APP_NAME .. " 📺"
 
-local APP_USER_AGENT = string.format("%s/%s (%s) %s/%s-%s", APP_NAME, APP_VERSION, jit.os, mp.get_property("mpv-version"):gsub(' ', '/'), jit.version, jit.version_num)
+local APP_USER_AGENT = string.format("%s/%s (%s) %s", APP_NAME, APP_VERSION, jit.os, mp.get_property("mpv-version"):gsub(' ', '/'))
+--local APP_USER_AGENT = string.format("%s/%s (%s) %s/%s-%s", APP_NAME, APP_VERSION, jit.os, mp.get_property("mpv-version"):gsub(' ', '/'), jit.version, jit.version_num)
 
 package.path = mp.command_native({ "expand-path", "~~/script-opts/?.lua;" }) .. package.path
 
@@ -404,7 +405,14 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
 
             if channel_name and group_name then
 
-                group_name = string.match(group_name, "([^/]+)$"):trim()
+                group_name = group_name:gsub('|', '/')
+
+                -- alltv.club
+                if group_name then group_name = group_name:gsub("^%d+%. ", "") end
+                -- yasso tv
+                if group_name then group_name = group_name:gsub(" %([A-Z][A-Z]%)", "") end
+
+                group_name = string.match(group_name, "([^/]+)"):trim()
 
                 table.insert(channel_urls, line)
 
@@ -427,12 +435,6 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
                     else
                         table.insert(urls, { resolution=nil, url=channel_urls[1] })
                     end
-
-                    -- alltv.club
-                    if group_name then group_name = group_name:gsub("^%d+%. ", "") end
-
-                    -- yasso tv
-                    if group_name then group_name = group_name:gsub(" %([A-Z][A-Z]%)", "") end
 
                     entry = {
                         name = channel_name,
@@ -622,17 +624,17 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
                         
                         if season then
 
-                            local number = serial.name:match(" S(%d+)$")
+                            local sNumber = serial.name:match(" S(%d+)$")
 
                             for _, episode in ipairs(info) do
-                                table.insert(serial.urls, {episode=e, url=episode.urls[1].url})
+                                table.insert(serial.urls, { episode=episode.name:match("%d(E%d+)$"), url=episode.urls[1].url })
                             end
 
                             if serial.year > 1000 then
                                 serial.name = serial.name:gsub(" %(сериал%)", ""):gsub(" %(.-%d%d%d%d.-%)", ""):gsub(" %(%d%d%d%d%)", "")
 
                                 if not serial.name:find(serial.year) then
-                                    if number == "01" then
+                                    if sNumber == "01" then
                                         if serials[name:gsub(" S01$", " S02")] then
                                             serial.name = serial.name:gsub(season, string.format(" ( %s) %s", serial.year, season))
                                         else
@@ -645,7 +647,7 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
                             else
                                 local year = serial.name:match(" %((%d%d%d%d)%) ")
                                 if year then
-                                    if number == "01" then
+                                    if sNumber == "01" then
                                         if serials[name:gsub(" S01$", " S02")] then
                                             serial.name = serial.name:gsub(serial.name:match("( %(%d%d%d%d%))"), string.format(" ( %s) ", year))
                                         else
@@ -657,9 +659,8 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
                                 end
                             end
                             
-                            --serial.name = string.format("%s Сезон %s/%s", serial.name:gsub(season, ""), number, n_episodes(#serial.urls))
-                            --serial.name = string.format("%s Сезон %s / Серий %s", serial.name:gsub(season, ""), number, #serial.urls)
-                            serial.name = string.format("%s Сезон %s/%02d", serial.name:gsub(season, ""), number, #serial.urls)
+                            --serial.name = string.format("%s Сезон %s/%02d", serial.name:gsub(season, ""), sNumber, #serial.urls)
+                            serial.name = string.format("%s S%s/%02d", serial.name:gsub(season, ""), sNumber, #serial.urls)
                         else
                             add_serial = false
 
@@ -816,16 +817,15 @@ function get_current_page_groups(page)
 
             local name = menu_state.group_names[i]
 
-            local name_len = MpvIptvUtf8.len(name)
-
-            max_len = math.max(max_len, name_len)
-
             table.insert(page_groups, {
                 name = name,
-                name_len = name_len,
                 index = i,
                 channel_count = #channel_groups[name] or 0
             })
+        end
+
+        for _, name in ipairs(menu_state.group_names) do
+            max_len = math.max(max_len, MpvIptvUtf8.len(name))
         end
         
         cache = {page_groups = page_groups, start_idx = start_idx, max_len = max_len}
@@ -854,14 +854,14 @@ end
 
 function map_channel_to_programme(channel)
 
-    channel.symbol = " "
+    channel.symbol = "\\h"
 
     local tvg_id = nil
 
     if not tvg_id and channel.tvg_id then
         if epg_programmes[channel.tvg_id] then
             tvg_id = channel.tvg_id
-            channel.symbol = " " -- нашли по tvg_id
+            channel.symbol = "\\h" -- нашли по tvg_id
         end
     end
 
@@ -877,7 +877,7 @@ function map_channel_to_programme(channel)
         tvg_id = epg_channels[display_lower] or epg_channels[display_lower:gsub("[%s-]", "")]
 
         if tvg_id and epg_programmes[tvg_id] then
-            channel.symbol = "⋗" -- нашли по имени
+            channel.symbol = "." -- нашли по имени
         else
             tvg_id = nil
         end
@@ -914,10 +914,11 @@ function get_current_page_channels(group_name, page)
         for i = start_idx, end_idx do
 
             local channel = menu_state.current_group_channels[i]
-
-            max_len = math.max(max_len, MpvIptvUtf8.len(channel.name))
-            
             table.insert(page_channels, channel)
+        end
+
+        for _, channel in ipairs(menu_state.current_group_channels) do
+            max_len = math.max(max_len, MpvIptvUtf8.len(channel.name))
         end
         
         cache = { page_channels=page_channels, start_idx=start_idx, end_idx = end_idx, max_len = max_len }
@@ -961,10 +962,6 @@ end
 -- МЕНЮ ГРУПП С ПАГИНАЦИЕЙ
 -- ============================================
 
-local function makeup(fs, str)
-    return string.format("{\\fs%d}%s", fs, str)
-end
-
 local function IsMouseValid(mouse)
 
     if not mouse then
@@ -977,11 +974,6 @@ local function IsMouseValid(mouse)
     --return not mp.get_property_bool("osc") and pos.y < (screen.h * 3 / 4) and pos.x < (screen.w * 2 / 3)
     return y > 100 and y < (height * 3 / 4) and x < (width * 3 / 4)
 end            
-
-function make_header(text)
-    return makeup(DEFAULT_FONT_SIZE, "\\h\n")..makeup(5, "\\h\n")
-                    ..makeup(DEFAULT_FONT_SIZE, text)..makeup(10, "\\h\n")
-end
 
 function show_groups_menu(page)
 
@@ -996,27 +988,32 @@ function show_groups_menu(page)
     current_group.end_idx = start_idx + #page_groups - 1
     current_group.name = ""
 
-    local header_text = ""
-    local menu_text = ""
+    local start_x, start_y, header_text, menu_text = 10, 50, "", ""
 
-    header_text = total_groups <= GROUPS_PER_PAGE and "📡 ГРУППЫ ПОТОКОВ" or
-        string.format("📡 ГРУППЫ ПОТОКОВ [СТРАНИЦА %d из %d]", page, menu_state.group_pages)
+    header_text = total_groups <= GROUPS_PER_PAGE and "📡 ГРУППЫ ПОТОКОВ" or string.format("📡 ГРУППЫ ПОТОКОВ [СТРАНИЦА %d из %d]", page, menu_state.group_pages)
+    header_text = string.format("{\\fe1\\fs%d}{\\pos(%d, %d)}%s\n", DEFAULT_FONT_SIZE, start_x, start_y, header_text)
 
-    header_text = make_header(header_text)
+    start_x = start_x + 5
+    start_y = start_y + 5
 
-    local GROUP_NAME_FMT = "%s {\\c&H00FFFF&}%s{\\c&HFFFFFF&}%s ⋗ %4d потоков\n"
-    local C_GROUP_NAME_FMT = "%s {\\c&H00FF00&}%s%s ⋗ %4d потоков\n"
+    local info_pos_x = math.ceil(start_x + max_len * DEFAULT_FONT_SIZE * 0.551) -- + DEFAULT_FONT_SIZE) 
 
     -- Выводим группы
     for i, info in ipairs(page_groups) do
         local idx = start_idx + i - 1
         local label = get_item_label(i, idx)
 
-        local entry = makeup(DEFAULT_FONT_SIZE, 
-            string.format(current_group.idx == idx and C_GROUP_NAME_FMT or GROUP_NAME_FMT,
-            label, info.name, string.rep(' ', max_len - info.name_len + 5), info.channel_count))
+        local pos_y = start_y + i * (DEFAULT_FONT_SIZE)
+        
+        local entry = string.format(current_group.idx == idx and "{\\c&H00FF00&}{\\fe1\\fs%d}{\\pos(%d, %d)}{\\u1}\\h%5d потоков\n" or "{\\fe1\\fs%d}{\\pos(%d, %d)}\\h%5d потоков\n",
+            DEFAULT_FONT_SIZE, info_pos_x, pos_y, info.channel_count)
 
         menu_text = menu_text..entry
+
+        entry = string.format(current_group.idx == idx and ("%s {\\c&H00FF00&{\\u1}%s" .. string.rep('\\h', max_len - MpvIptvUtf8.len(info.name) + 15)) or "%s {\\c&H00FFFF&}%s{\\c&HFFFFFF&}", label, info.name)
+        entry = string.format("{\\fe1\\fs%d}{\\pos(%d, %d)}%s\n", DEFAULT_FONT_SIZE, start_x, pos_y, entry)
+        menu_text = menu_text..entry
+
     end
 
     -- Привязываем клавиши для групп
@@ -1093,10 +1090,9 @@ function show_groups_menu(page)
             show_groups_menu(page)
         end)
 
-    local nav_text = string.rep(makeup(DEFAULT_FONT_SIZE, "\\h\n"), (GROUPS_PER_PAGE - #page_groups))
-     ..makeup(5, "\\h\n")..get_navigation_controls("groups")
+    entry = string.format("{\\fe1\\fs%d}{\\pos(%d, %d)}ВЫБОР ГРУППЫ: [Ctrl+]0..9 | СТРАНИЦЫ: \u{25C4}/\u{25BA}\n", DEFAULT_FONT_SIZE, start_x + 10, start_y + GROUPS_PER_PAGE * DEFAULT_FONT_SIZE + DEFAULT_FONT_SIZE * 3 / 2)
 
-    osd_overlay.data = "\n\n" .. header_text .. menu_text .. nav_text
+    osd_overlay.data = header_text .. menu_text .. entry
     osd_overlay.hidden = false
     osd_overlay:update()
 
@@ -1116,44 +1112,39 @@ function show_channels_menu(group_name, page)
     local idx_format
     if max_idx < 10 then idx_format = "%d" elseif max_idx < 100 then idx_format = "%02d" else idx_format = "%03d" end
 
-    -- Формируем меню
-    local header_text
-    local menu_text = ""
+    local start_x, start_y, header_text, menu_text = 10, 50, "", ""
 
-    --local padding = ((math.ceil(total_channels / CHANNELS_PER_PAGE) < 10 or page > 9) and "") or " "
+    header_text = total_channels <= CHANNELS_PER_PAGE and string.format("📡 ГРУППА %s", group_name) or string.format("📡 ГРУППА %s [СТРАНИЦА %d ИЗ %d]", group_name, page, menu_state.channel_pages)
+    header_text = string.format("{\\fe1\\fs%d}{\\pos(%d, %d)}%s\n", DEFAULT_FONT_SIZE, start_x, start_y, header_text)
 
-    header_text = total_channels <= CHANNELS_PER_PAGE and string.format("📡 ГРУППА %s", group_name) or
-        string.format("📡 ГРУППА %s [СТРАНИЦА %d ИЗ %d]", group_name, page, menu_state.channel_pages)
+    start_x = start_x + 5
+    start_y = start_y + 5
 
-    header_text = make_header(header_text)
+    local info_pos_x = start_x + math.ceil(max_len * DEFAULT_FONT_SIZE * 0.55) + DEFAULT_FONT_SIZE
 
     local ctime = os.time()
 
     for i, channel in ipairs(page_channels) do
 
-        local display_name = channel.name
+        local cname = channel.name
         local global_index = start_idx + i - 1
         local label = get_item_label(i, global_index)
 
-        if channel.film_year then
-            --display_name = display_name .. "/" .. channel.film_year
-        end
+        local pos_y = start_y + i * (DEFAULT_FONT_SIZE)
 
-        local bRtl = MpvIptvUtf8.IsRtl(display_name)
-        local display_name_len = MpvIptvUtf8.len(display_name)
+        local cchannel = string.format("{\\fe1\\fs%d\\pos(%d, %d)}%s{\\fs12}%s {\\fs%d\\c&H00FFFF&}%s\n", 
+            DEFAULT_FONT_SIZE, start_x, pos_y, label, string.format(idx_format, global_index), DEFAULT_FONT_SIZE, cname)--- .. "|"..#channel.urls)
 
-        if bRtl then --display_name == "ערוץ הידברות" then
-            display_name =  "\u{2067}"..display_name.."\u{2069}"
-        end
-
-        local cchannel = makeup(DEFAULT_FONT_SIZE,
-            string.format("{\\q2}%s{\\fs12}" .. idx_format .. " {\\fs%d}{\\c&H00FFFF&}%s{\\c&HFFFFFF&}",
-            label, global_index, DEFAULT_FONT_SIZE, display_name))
-        
         if current_channel.idx == global_index and current_group.name == group_name then
-            cchannel = makeup(DEFAULT_FONT_SIZE,
-                string.format("{\\q2}%s{\\fs12}" .. idx_format .. " {\\fs%d}{\\c&H00FF00&}%s{\\c&HFFFFFF&}",
-                label, global_index, DEFAULT_FONT_SIZE, display_name))
+
+            local padding = ""
+
+            if not channel.tvg_id then
+                padding = string.rep('\\h', max_len - MpvIptvUtf8.len(cname))
+            end
+
+            cchannel = string.format("{\\fe1\\fs%d\\pos(%d, %d)}%s{\\fs12}%s {\\fs%d\\c&H00FF00&\\u1}%s%s\n", 
+                DEFAULT_FONT_SIZE, start_x, pos_y, label, string.format(idx_format, global_index), DEFAULT_FONT_SIZE, cname, padding)
         end
 
         local programme = nil
@@ -1166,24 +1157,23 @@ function show_channels_menu(group_name, page)
 
         if programme then
             if programme then
-                local cprogramme = nil
+
+                local cprogramme, ctitle = nil, nil
 
                 for i, info in ipairs(programme) do
                     if ctime >= info.start and ctime < info.stop then
 
-                        if current_channel.idx  == global_index then
+                        if current_channel.idx == global_index then
                             current_channel.programme_idx = i
                         end
  
                         local start = os.date("*t", info.start)
                         local stop = os.date("*t", info.stop)
                         
-                        local padding = string.rep(' ', max_len - display_name_len + (bRtl and 2 or 1))
+                        cprogramme = string.format("%02d:%02d-%02d:%02d", start.hour, start.min, stop.hour, stop.min)
 
-                        cprogramme = makeup(DEFAULT_FONT_SIZE,
-                            string.format("%s%s %s %s", padding, channel.symbol,
-                            string.format("%02d:%02d-%02d:%02d", start.hour, start.min, stop.hour, stop.min),
-                            MpvIptvUtils.DecodeText(info.title)))
+                        ctitle = MpvIptvUtils.DecodeText(info.title)
+
                         break
                     end
                 end
@@ -1194,15 +1184,16 @@ function show_channels_menu(group_name, page)
                     local start = os.date("*t", info.start)
                     local stop = os.date("*t", info.stop)
 
-                    local padding = string.rep(' ', max_len - display_name_len + (bRtl and 2 or 1))
+                    cprogramme = string.format("%02d/%02d/%04d, %02d:%02d-%02d:%02d", start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min)
 
-                    cprogramme = makeup(DEFAULT_FONT_SIZE,
-                        string.format("%s%s %s %s", padding, channel.symbol,
-                        string.format("%02d/%02d/%04d, %02d:%02d-%02d:%02d", start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min),
-                        MpvIptvUtils.DecodeText(info.title)))
+                    ctitle = MpvIptvUtils.DecodeText(info.title)
                 end
 
-                cchannel = cchannel .. cprogramme
+                if current_channel.idx == global_index and current_group.name == group_name then
+                    cchannel = cchannel .. string.format("{\\q2\\fe1\\fs%d}{\\pos(%d, %d)}{\\c&H00FF00&}%s {\\u1}%s %s\n", DEFAULT_FONT_SIZE, info_pos_x, pos_y, channel.symbol, cprogramme, ctitle)
+                else
+                    cchannel = cchannel .. string.format("{\\q2\\fe1\\fs%d}{\\pos(%d, %d)}{\\c&HFFFFFF&}%s %s %s\n", DEFAULT_FONT_SIZE, info_pos_x, pos_y, channel.symbol, cprogramme, ctitle)
+                end
 
                 if current_channel.idx == global_index then
 
@@ -1217,8 +1208,8 @@ function show_channels_menu(group_name, page)
 
                         local data = "\n\n"
 
-                        local fmt = '{\\shad1\\4c&H000000&\\q1\\b1\\bord1\\be\\fs%s\\1c&H%s&}%02d/%02d/%04d %02d:%02d-%02d:%02d{\\fs%s} %s'..
-                                    '\n{\\1c&H%s&\\fs%s\\q3\\shad1\\4c&H000000&}\\h\\h\\h%s'
+                        local fmt = '{\\u1\\fe1\\shad1\\4c&H000000&\\q1\\b1\\bord1\\be\\fs%s\\1c&H%s&}%02d/%02d/%04d %02d:%02d-%02d:%02d{\\fs%s} %s\n'..
+                                    '{\\fe1\\1c&H%s&\\fs%s\\q3\\shad1\\4c&H000000&}\\h\\h\\h%s'
                         
                         for idx = start_idx, end_idx do
 
@@ -1232,17 +1223,15 @@ function show_channels_menu(group_name, page)
                                 local desc = MpvIptvUtils.DecodeText(info.desc or "")
 
                                 if idx == current_channel.programme_idx then
-                                    data = data .. fmt:format(DEFAULT_FONT_SIZE, "54E5B2", --"FF00FF",
+                                    data = data .. fmt:format(DEFAULT_FONT_SIZE-6, "54E5B2", --"FF00FF",
                                                 start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min,
-                                                DEFAULT_FONT_SIZE, MpvIptvUtils.DecodeText(info.title),
-                                                "54E5B2", DEFAULT_FONT_SIZE, desc)
+                                                DEFAULT_FONT_SIZE-2, MpvIptvUtils.DecodeText(info.title),
+                                                "54E5B2", DEFAULT_FONT_SIZE - 4, desc)
                                 else
-                                    if info.desc then desc = "..." end
-
-                                    data = data .. fmt:format(DEFAULT_FONT_SIZE - 3, "00FFFF",
+                                    data = data .. fmt:format(DEFAULT_FONT_SIZE - 6, "00FFFF",
                                                 start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min,
-                                                DEFAULT_FONT_SIZE, MpvIptvUtils.DecodeText(info.title),
-                                                "FFFFFF", DEFAULT_FONT_SIZE - 2, desc)
+                                                DEFAULT_FONT_SIZE-2, MpvIptvUtils.DecodeText(info.title),
+                                                "FFFFFF", DEFAULT_FONT_SIZE - 10, "...")
                                 end
 
                                 data = data .. "\n"
@@ -1302,7 +1291,7 @@ function show_channels_menu(group_name, page)
             end
         end
 
-        menu_text = menu_text .. cchannel .. "\n"
+        menu_text = menu_text .. cchannel
     end
 
     -- Привязываем клавиши
@@ -1369,10 +1358,8 @@ function show_channels_menu(group_name, page)
             show_channels_menu(group_name, page)
         end)
     
-    local nav_text = string.rep(makeup(DEFAULT_FONT_SIZE, "\\h\n"), (CHANNELS_PER_PAGE - #page_channels))
-     ..makeup(5, "\\h\n").. get_navigation_controls("channels")
-
-    osd_overlay.data = header_text .. menu_text .. nav_text
+    entry = string.format("{\\fe1\\fs%d}{\\pos(%d, %d)}ВЫБОР ПОТОКА: [Ctrl+]0..9 | СТРАНИЦЫ: \u{25C4}/\u{25BA} | ВОЗВРАТ: Backspace\n", DEFAULT_FONT_SIZE, start_x + 10, start_y + CHANNELS_PER_PAGE * DEFAULT_FONT_SIZE + DEFAULT_FONT_SIZE * 3 / 2)
+    osd_overlay.data = header_text .. menu_text .. entry
     osd_overlay.hidden = false
     osd_overlay:update()
 end
@@ -1380,14 +1367,6 @@ end
 -- ============================================
 -- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 -- ============================================
-
-function get_navigation_controls(type)
-    if type == "channels" then
-        return makeup(DEFAULT_FONT_SIZE-2, "ВЫБОР ПОТОКА: [Ctrl+]0..9 | СТРАНИЦЫ: \u{25C4}/\u{25BA} | ВОЗВРАТ: Backspace\n")
-    else
-        return makeup(DEFAULT_FONT_SIZE-2, "ВЫБОР ГРУППЫ: [Ctrl+]0..9 | СТРАНИЦЫ: \u{25C4}/\u{25BA}\n")
-    end
-end
 
 function setup_pagination_navigation(type, current_page, total_pages, change_page_callback)
     
@@ -1489,9 +1468,6 @@ function play_channel(group_name, channel_index, programme_id)
     mp.set_property("loop-file", "no")
 
     if select_channel(group_name, channel_index, true) then
-        mp.commandv("stop")
-        mp.commandv("playlist-clear")
-        current_playlist = {}
 
         local ctime = os.time()
 
@@ -1523,55 +1499,77 @@ function play_channel(group_name, channel_index, programme_id)
             programme = programme_generator()
         end
 
-        for i, info in ipairs(programme) do
+        if channel.isIPTV then
 
-            if info.start > ctime then
-                break
-            end
+            mp.commandv("stop")
+            mp.commandv("playlist-clear")
+            current_playlist = {}
 
-            local start = os.date("*t", info.start)
-            local stop = os.date("*t", info.stop)
-            
-            local url = channel.urls[1].url
+            for i, info in ipairs(programme) do
 
-            local file = url:match("/([^/]+)%?") -- channel.catchup_type == 2
-
-            if file then
-
-                local delta = string.format("-%d-%d", info.start, info.stop - info.start)
-                
-                url, cnt = url:gsub("/index%.m3u8%?", "/index"..delta..".m3u8?")
-
-                if cnt == 0 then
-                    url, cnt = url:gsub("/mono%.m3u8%?", "/mono"..delta..".m3u8?")
+                if info.start > ctime then
+                    break
                 end
 
-            else
-                url = url.."?utc="..info.start.."&lutc="..info.stop
+                local start = os.date("*t", info.start)
+                local stop = os.date("*t", info.stop)
+                
+                local url = channel.urls[1].url
+
+                local file = url:match("/([^/]+)%?") -- channel.catchup_type == 2
+
+                if file then
+
+                    local delta = string.format("-%d-%d", info.start, info.stop - info.start)
+                    
+                    url, cnt = url:gsub("/index%.m3u8%?", "/index"..delta..".m3u8?")
+
+                    if cnt == 0 then
+                        url, cnt = url:gsub("/mono%.m3u8%?", "/mono"..delta..".m3u8?")
+                    end
+
+                else
+                    url = url.."?utc="..info.start.."&lutc="..info.stop
+                end
+
+                local fmt = playlist_entry_fmt:format(start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min, "%s")
+
+                table.insert(current_playlist, {title = info.title, fmt = fmt, start = info.start, stop = info.stop, isIPTV = channel.isIPTV})
+                mp.commandv("loadfile", url, "append")
+
+                if i == current_channel.programme_idx then play_index = #current_playlist - 1 end
             end
 
-            local fmt = playlist_entry_fmt:format(start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min, "%s")
-
-            table.insert(current_playlist, {title = info.title, fmt = fmt, start = info.start, stop = info.stop, isIPTV = channel.isIPTV})
-            mp.commandv("loadfile", url, "append")
-
-            if i == current_channel.programme_idx then play_index = #current_playlist - 1 end
-        end
-        
-        if channel.isIPTV then
             local title = "Прямой эфир ..."
             table.insert(current_playlist, {title = title, fmt = nil, start = 0, stop = 0, isIPTV = channel.isIPTV })
             mp.commandv("loadfile", channel.urls[1].url, "append")
 
             if current_channel.programme_idx == 0 then play_index = #current_playlist - 1 end
+        
+        elseif #channel.urls == 1 then
+
+            mp.commandv("stop")
+            mp.commandv("playlist-clear")
+            current_playlist = {}
+
+            table.insert(current_playlist, {title = current_channel.name, fmt = nil, start = 0, stop = 0, isIPTV = channel.isIPTV })
+            mp.commandv("loadfile", channel.urls[1].url, "append")
+
+            play_index = 0
+            
         else
-            for _, entry in ipairs(channel.urls) do
+
+            local titles, temp_current_playlist = {}, {}
+
+            local bRes = false
+
+            for i, entry in ipairs(channel.urls) do
                 
                 local title = ""
 
                 if entry.resolution then
                     title = entry.resolution .. "p, "
-                    play_index = #channel.urls - 1
+                    bRes = true
                 elseif entry.episode then
                     title = entry.episode .. ", "
                 elseif entry.video_options then
@@ -1580,15 +1578,44 @@ function play_channel(group_name, channel_index, programme_id)
 
                 title = title .. current_channel.name
 
-                table.insert(current_playlist, {title = title, fmt = nil, start = 0, stop = 0, isIPTV = channel.isIPTV })
+                titles[i] = title
 
-                mp.commandv("loadfile", entry.url, "append")
+                table.insert(temp_current_playlist, {title = title, fmt = nil, start = 0, stop = 0, isIPTV = channel.isIPTV })
+
             end
+
+            local prompt = bRes and "Выбор разрешение потока: " or "Выбор серии в сезоне: "
+
+            input.select({
+                prompt = prompt,
+                items = titles,
+                default_item = bRes and #titles or 1,
+                submit = function (index)
+
+                    prompt = nil
+
+                    mp.commandv("stop")
+                    mp.commandv("playlist-clear")
+
+                    current_playlist = temp_current_playlist
+
+                    temp_current_playlist = nil
+
+                    for _, entry in ipairs(channel.urls) do
+                        mp.commandv("loadfile", entry.url, "append")
+                    end
+
+                    hide_menu()
+                    PlayPlayListEntry(index - 1)
+                end
+            })
+
+            return
+
         end
 
-        PlayPlayListEntry(play_index)
-
         hide_menu()
+        PlayPlayListEntry(play_index)
     end        
 end
 
@@ -1801,7 +1828,7 @@ function show_osd_message(time, title, text)
             end
         end
 
-        osd_overlay.data = string.format("{\\fs%d}\n%s\n\n\n%s", DEFAULT_FONT_SIZE + 2, title, text)
+        osd_overlay.data = string.format("\\h\n\\h\n{\\fe1\\fs%d}%s\n{\\fe1\\fs%d}%s", DEFAULT_FONT_SIZE, title, DEFAULT_FONT_SIZE-2, text)
         osd_overlay.hidden = false
         osd_overlay:update()
 
@@ -1926,7 +1953,7 @@ mp.add_forced_key_binding("g-c", "select-channel-list-self", function ()
 
         local channels = channel_groups[menu_state.group_name]
 
-        if channels and #channels > 1 then
+        if channels and #channels > 0 then
 
             local items = {}
 
@@ -1994,7 +2021,7 @@ end)
 
 mp.add_forced_key_binding("g-p", "select-play-list-self", function ()
 
-    if #current_playlist < 2 then
+    if #current_playlist < 1 then
         return
     end
 
@@ -2023,7 +2050,7 @@ mp.add_forced_key_binding("g-p", "select-play-list-self", function ()
     if current_playlist[1].isGroupList then
         prompt = "Выбор из списка проигрывания: "
     elseif not current_playlist[1].isIPTV then
-        if current_playlist[1].title:startswith("S") then
+        if current_playlist[1].title:match("^E(%d+),") then
             prompt = "Выбор серии в сезоне: "
         else
             prompt = "Выбор разрешения фильма: "
