@@ -1,4 +1,4 @@
-# MpvIptv Player v1.2.4
+# MpvIptv Player v1.2.5
 Приложение просмотра IPTV потоков для Windows
 
 ![MpvIptv Player main screen](/screenshots/s01.png)
