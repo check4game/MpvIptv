@@ -9,7 +9,7 @@ local ass = assdraw.ass_new()
  ]]
 
 local APP_NAME = "MpvIptv"
-local APP_VERSION = "v1.2.5"
+local APP_VERSION = "v1.2.6"
 local TITLE_PREFIX = APP_NAME .. " 📺"
 
 local APP_USER_AGENT = string.format("%s/%s (%s) %s", APP_NAME, APP_VERSION, jit.os, mp.get_property("mpv-version"):gsub(' ', '/'))
@@ -238,12 +238,12 @@ function parse_epg(epg_file_name, epg_file_path)
                             epg_channels[lower] = id
                         end
 
-                        lower = lower:gsub("[%s-]", "") -- удаляем все пробелы
-
-                        if not epg_channels[lower] then
-                            epg_channels[lower] = id
+--[[                         
+                        local r,b = lower:gsub(' hd$', '')
+                        if b ~= 0 and not epg_channels[r] then
+                            epg_channels[r] = id
                         end
-
+ ]]
                         display_cnt = display_cnt + 1
                     end
                 end
@@ -353,6 +353,9 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
             -- catchup-icon="1" catchup-type="flussonic" catchup-time="604800" playlist-logo="https://rus.tvtm.one/images/rus.tvtm.one.playlist.logo.png"
             --global_catchup_type = get_catchup_type(line)
 
+            --x-tvg-url
+            --url-tvg 
+            
         elseif line:startswith("#EXTINF:") then
             
             line = line:gsub("%s+", " ") -- double space
@@ -363,7 +366,9 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
 
             channel_name = string.normalize_display_name(htmlEntities.decode(channel_name)):gsub("4К", "4K") -- русская буква К
 
-            channel_name = channel_name:gsub(" BY$", ""):gsub(" (BY)$", "")
+            channel_name = channel_name ~= "" and channel_name or "N/A"
+
+            --channel_name = channel_name:gsub(" BY$", ""):gsub(" (BY)$", "")
 
             if fixNameWithPoints then channel_name = MpvIptvUtils.fixNameWithPoints(channel_name) end
 
@@ -520,17 +525,45 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
             end
 
             MpvIptvGroups.GroupGenerator(channel_groups)
+
+            local allGroup, unique_filter = {}, {}
+
+            for gname, glist in pairs(channel_groups) do
+                for _, entry in ipairs(glist) do
+                    if not entry.bAdditional then
+                        key = entry.name .. entry.urls[1].url
+                        if not unique_filter[key] then
+                            unique_filter[key] = true
+                            entry = copy_table(entry)
+                            table.insert(allGroup, copy_table(entry))
+                        end
+                    end
+                end
+            end
+
+
+            MpvIptvUtf8.sort(allGroup, function(entry)
+
+--[[                 
+                if not entry.name or entry.name=="" then
+                    msg.warn(utils.format_table(entry)                    )
+                end
+ ]]
+                return entry.name
+            end)
+
+            unique_filter = nil
+            channel_groups["«ПОТОКИ ОБЩИЙ СПИСОК»"] = allGroup
+            allGroup = nil
         else
 
             GLOBAL_IS_IPTV = false
 
             msg.info("Фильмы/Сериалы/ТВ Шоу")
 
-            local allGroup = {}
+            local allGroup, yearGroups, unique_filter = {}, {}, {}
 
             local year = os.date("*t", os.time()).year
-
-            local yearGroups = {}
 
             for i = 0, 6 do yearGroups[year - i] = {} end
             
@@ -556,12 +589,21 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
                 end
             end
 
+            MpvIptvUtf8.sort(allGroup, function(entry)
+                return entry.name
+            end)
+
             unique_filter = nil
             channel_groups["«ПОТОКИ ОБЩИЙ СПИСОК»"] = allGroup
             allGroup = nil
 
             for year, group in pairs(yearGroups) do
                 if #group > 0 then
+
+                    MpvIptvUtf8.sort(group, function(entry)
+                        return entry.name
+                    end)
+
                     channel_groups["«ПОТОКИ "..year.." год»"] = group
                 end
                 yearGroups[year] = nil
@@ -868,16 +910,24 @@ function map_channel_to_programme(channel)
     if not tvg_id and channel.logo_id then
         if epg_programmes[channel.logo_id] then
             tvg_id = channel.logo_id
-            channel.symbol = "!" -- нашли по logo_id
+            channel.symbol = "." -- нашли по logo_id
         end
     end
 
     if not tvg_id then
-        local display_lower = string.normalize_display_name(MpvIptvUtf8.lower(channel.name))
-        tvg_id = epg_channels[display_lower] or epg_channels[display_lower:gsub("[%s-]", "")]
+        local lower = string.normalize_display_name(MpvIptvUtf8.lower(channel.name))
+        tvg_id = epg_channels[lower]
 
+--[[         
+        if not tvg_id then
+            local r,b = lower:gsub(' hd$', '')
+            if b ~= 0 then
+                tvg_id = epg_channels[r]
+            end
+        end
+ ]]
         if tvg_id and epg_programmes[tvg_id] then
-            channel.symbol = "." -- нашли по имени
+            channel.symbol = "!" -- нашли по имени
         else
             tvg_id = nil
         end
@@ -1206,10 +1256,10 @@ function show_channels_menu(group_name, page)
                         local start_idx = current_channel.programme_idx - 1
                         local end_idx = #programme
 
-                        local data = "\n\n"
+                        local data = "\\h\n"
 
                         local fmt = '{\\u1\\fe1\\shad1\\4c&H000000&\\q1\\b1\\bord1\\be\\fs%s\\1c&H%s&}%02d/%02d/%04d %02d:%02d-%02d:%02d{\\fs%s} %s\n'..
-                                    '{\\fe1\\1c&H%s&\\fs%s\\q3\\shad1\\4c&H000000&}\\h\\h\\h%s'
+                                    '%s{\\fe1\\1c&H%s&\\fs%s\\q3\\shad1\\4c&H000000&}\\h\\h\\h%s'
                         
                         for idx = start_idx, end_idx do
 
@@ -1226,12 +1276,12 @@ function show_channels_menu(group_name, page)
                                     data = data .. fmt:format(DEFAULT_FONT_SIZE-6, "54E5B2", --"FF00FF",
                                                 start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min,
                                                 DEFAULT_FONT_SIZE-2, MpvIptvUtils.DecodeText(info.title),
-                                                "54E5B2", DEFAULT_FONT_SIZE - 4, desc)
+                                                "\\h\n", "54E5B2", DEFAULT_FONT_SIZE - 4, desc) .. "\n\\h"
                                 else
                                     data = data .. fmt:format(DEFAULT_FONT_SIZE - 6, "00FFFF",
                                                 start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min,
                                                 DEFAULT_FONT_SIZE-2, MpvIptvUtils.DecodeText(info.title),
-                                                "FFFFFF", DEFAULT_FONT_SIZE - 10, "...")
+                                                "", "FFFFFF", DEFAULT_FONT_SIZE - 10, "...")
                                 end
 
                                 data = data .. "\n"
@@ -1281,7 +1331,7 @@ function show_channels_menu(group_name, page)
                         mp.add_key_binding("MBTN_LEFT", "play_channel_mouse", function() play_channel(true) end)
 
                         osd_overlay.hidden = false
-                        osd_overlay.data = "\\h\n\\h\n"..data
+                        osd_overlay.data = data
                         osd_overlay:update()
                     end
 
@@ -1707,6 +1757,7 @@ end
 function eof_reached(name, value)
 
     if value == true and #current_playlist ~= 0 then
+
         local idx = mp.get_property("playlist-playing-pos") + 1
 
         if idx > 0 and idx ~= #current_playlist then
@@ -1716,7 +1767,7 @@ function eof_reached(name, value)
 
             local current = current_playlist[idx]
 
-            if time_pos > 0 and duration > 0 and current.start > 0 and current.stop > 0 then
+            if current and time_pos and duration and time_pos > 0 and duration > 0 and current.start > 0 and current.stop > 0 then
 
                 local programme_duration = current.stop - current.start
                 --mp.msg.info("EOF reached, " .. time_pos .. "-" .. duration .. ", pd=" .. programme_duration)
@@ -1764,7 +1815,6 @@ local function fix_media_title()
 end
 
 mp.register_event("file-loaded", function(event)
---    msg.warn("file-loaded")
     fix_media_title()
     show_osd_media_info(15)
 end)    
@@ -1774,24 +1824,23 @@ mp.add_hook("on_load", 10, function(event)
 end)    
 
 mp.register_event("start-file", function(event)
---    msg.warn("start-file")
     fix_media_title()
 end)    
 
 mp.add_hook("on_load_fail", 10, function(event)
---    msg.warn("on_load_fail" .. utils.format_table(event))
---[[     
+    mp.commandv("set", "pause", "yes")
+    mp.command("stop")
     local fn = mp.get_property("stream-open-filename", nil)
     if fn then
-        msg.warn("Ошибка потока. " .. fn)
         show_console()
     end
- ]]
 end)
 
+--[[ 
 mp.register_event("end-file", function(event)
---    msg.warn("end-file" .. utils.format_table(event))
+    msg.warn("end-file" .. utils.format_table(event))
 end)    
+ ]]
 
 --[[ 
 mp.add_hook("on_after_end_file", 10, function(event)
@@ -1963,7 +2012,7 @@ mp.add_forced_key_binding("g-c", "select-channel-list-self", function ()
 
             local bResult = hide_menu()
 
-            local prompt = "Выбор потока из группы: "
+            local prompt = "Выбор потока из группы проигрывания: "
 
             input.select({
                 prompt = prompt,
@@ -2021,7 +2070,7 @@ end)
 
 mp.add_forced_key_binding("g-p", "select-play-list-self", function ()
 
-    if #current_playlist < 1 then
+    if #current_playlist == 0 then
         return
     end
 

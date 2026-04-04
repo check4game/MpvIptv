@@ -231,15 +231,23 @@ function MpvIptvUtils.GetEpgUrl(m3uFile)
     file:close()
 
     if line:startswith("#EXTM3U") then
+
         local url = line:match('url%-tvg="([^"]+)"') or ""
+
+        if url:trim() == "" then
+            url = line:match('x%-tvg%-url="([^"]+)"') or ""
+        end
+        
         if url:trim() == "" then 
             msg.warn("Файл не содержит url-tvg, "..select(2, utils.split_path(m3uFile)))
             return nil
         end
+
         return url:trim()
     end
 
     msg.error("Файл не содержит #EXTM3U, "..select(2, utils.split_path(m3uFile)))
+    
     if line ~= "" then
         msg.error(line)
     end
@@ -259,7 +267,7 @@ function MpvIptvUtils.GetName(url)
     if isFileUrl(url) then
         return url:match("([^/\\]+)$") ..'.' .. hash(url)
     else
-        return url:match("://([^:/]+)") ..'.' .. hash(url)
+        return url:match("://([^:/]+)") ..'.' .. url:match("([^/\\]+)$") .. '.' .. hash(url)
     end
 end
 
