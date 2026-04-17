@@ -14,7 +14,7 @@
 
 ## Программа для IPTV потоков
 1. Поддерживается EPG в формате xml или xml.gz
-2. Ссылка на файл EPG автоматически используется из файла со списком m3u IPTV потоков.
+2. Ссылка на файл EPG автоматически выбирается из файла со списком m3u IPTV потоков.
 
 ## Внешние скрипты, библиотеки, утилиты и приложения:
 1. Mpv Player, https://github.com/mpv-player/mpv, исполняемые файлы загружаются из репозитария [shinchiro/mpv-winbuild-cmake](https://github.com/shinchiro/mpv-winbuild-cmake/releases)<br>
