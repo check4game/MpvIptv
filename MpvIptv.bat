@@ -44,6 +44,8 @@ set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/8a8c49ed7831e679
 set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/17540a841253ecfaf68901b93c7968c8aaad95dc
 ::: MpvIptv v1.2.6
 set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/4e6e3bd9f64d516d0520c018ee162c00ac85b06b
+::: MpvIptv v1.2.7
+set srcUrl=https://raw.githubusercontent.com/check4game/MpvIptv/99d1941ef27ae96e88ab8944d3cb365164a0ef7d
 
 set configUrl=!srcUrl!/portable_config
 
