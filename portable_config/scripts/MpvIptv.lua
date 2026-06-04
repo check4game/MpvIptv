@@ -9,7 +9,7 @@ local ass = assdraw.ass_new()
  ]]
 
 local APP_NAME = "MpvIptv"
-local APP_VERSION = "v1.2.6"
+local APP_VERSION = "v1.2.7"
 local TITLE_PREFIX = APP_NAME .. " 📺"
 
 local APP_USER_AGENT = string.format("%s/%s (%s) %s", APP_NAME, APP_VERSION, jit.os, mp.get_property("mpv-version"):gsub(' ', '/'))
@@ -362,11 +362,15 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
 
             line = line:gsub(" ,", ",") -- fix https://smolnp.github.io
 
-            channel_name = line:match('.*",%s*(.*)') or "N/A"
+            channel_name = line:match('.*",%s*(.*)') or ""
+
+            if channel_name == "" then
+                channel_name = line:match('.*,(.*)') or ""
+            end
 
             channel_name = string.normalize_display_name(htmlEntities.decode(channel_name)):gsub("4К", "4K") -- русская буква К
 
-            channel_name = channel_name ~= "" and channel_name or "N/A"
+            channel_name = channel_name ~= "" and channel_name or "Отсутствует"
 
             --channel_name = channel_name:gsub(" BY$", ""):gsub(" (BY)$", "")
 
@@ -403,7 +407,7 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
             if channel_name and (not group_name or group_name == "") then
                 group_name = line:match("^#EXTGRP:(.*)$"):trim()
             end
-        elseif line:startswith("http") then --not line:startswith("#") and line ~= "" then
+        elseif line:startswith("http") or line:startswith("file") then --not line:startswith("#") and line ~= "" then
             if channel_name and not group_name then
                 group_name = "Отсутствует"
             end
@@ -543,12 +547,6 @@ function parse_m3u(m3u_file_name, m3u_file_path, fixes)
 
 
             MpvIptvUtf8.sort(allGroup, function(entry)
-
---[[                 
-                if not entry.name or entry.name=="" then
-                    msg.warn(utils.format_table(entry)                    )
-                end
- ]]
                 return entry.name
             end)
 
@@ -1222,7 +1220,7 @@ function show_channels_menu(group_name, page)
                         
                         cprogramme = string.format("%02d:%02d-%02d:%02d", start.hour, start.min, stop.hour, stop.min)
 
-                        ctitle = MpvIptvUtils.DecodeText(info.title)
+                        ctitle = MpvIptvUtils.DecodeText(info.title):gsub("^⋗ ", "")
 
                         break
                     end
@@ -1236,7 +1234,7 @@ function show_channels_menu(group_name, page)
 
                     cprogramme = string.format("%02d/%02d/%04d, %02d:%02d-%02d:%02d", start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min)
 
-                    ctitle = MpvIptvUtils.DecodeText(info.title)
+                    ctitle = MpvIptvUtils.DecodeText(info.title):gsub("^⋗ ", "")
                 end
 
                 if current_channel.idx == global_index and current_group.name == group_name then
@@ -1584,7 +1582,7 @@ function play_channel(group_name, channel_index, programme_id)
 
                 local fmt = playlist_entry_fmt:format(start.day, start.month, start.year, start.hour, start.min, stop.hour, stop.min, "%s")
 
-                table.insert(current_playlist, {title = info.title, fmt = fmt, start = info.start, stop = info.stop, isIPTV = channel.isIPTV})
+                table.insert(current_playlist, {title = info.title:gsub("^⋗ ", ""), fmt = fmt, start = info.start, stop = info.stop, isIPTV = channel.isIPTV})
                 mp.commandv("loadfile", url, "append")
 
                 if i == current_channel.programme_idx then play_index = #current_playlist - 1 end
@@ -1760,17 +1758,30 @@ function eof_reached(name, value)
 
         local idx = mp.get_property("playlist-playing-pos") + 1
 
-        if idx > 0 and idx ~= #current_playlist then
+        --msg.warn("eof_reached, " .. string.format("%s, idx=%d", tostring(idx == #current_playlist), idx))
+
+        if idx == #current_playlist then
+            mp.commandv("set", "pause", "yes")
+            mp.commandv("playlist-play-index", idx - 1)
+            mp.commandv("set", "pause", "no")
+
+            --local path = mp.get_property('path')
+            --if path then
+            --    msg.warn("reload: " .. path)
+            --    mp.commandv("set", "pause", "yes")
+            --    mp.commandv('loadfile', path, 'replace', -1, 'start=0,pause=no')
+            --end
+        elseif idx > 0 then
 
             local time_pos = mp.get_property_number("time-pos")
             local duration = mp.get_property_number("duration")
 
-            local current = current_playlist[idx]
+            local current = current_playlist[idx] -- idx => next 
 
-            if current and time_pos and duration and time_pos > 0 and duration > 0 and current.start > 0 and current.stop > 0 then
+            if time_pos and duration and time_pos > 0 and duration > 0 and current.start and current.start > 0 and current.stop and current.stop > 0 then
 
                 local programme_duration = current.stop - current.start
-                --mp.msg.info("EOF reached, " .. time_pos .. "-" .. duration .. ", pd=" .. programme_duration)
+                --msg.info("EOF reached, " .. time_pos .. "-" .. duration .. ", pd=" .. programme_duration)
                 mp.commandv("set", "pause", "yes")
 
                 if (programme_duration - duration) > 10 or os.time() <  current.stop then
@@ -2134,6 +2145,13 @@ mp.add_forced_key_binding("g-p", "select-play-list-self", function ()
 
 end)
 
+mp.observe_property("video-params/aspect", "number", function(_, value)
+    if value and value > 1.3 and value < 1.4 then
+        msg.warn("aspect ratio from "..value.." => "..(16/9))
+        mp.set_property("file-local-options/video-aspect-override", "16:9")        
+    end
+end)
+
 
 --[[ local overlay_add_args = {
     "overlay-add", 1, 1400, 0,
@@ -2150,7 +2168,7 @@ msg.warn(APP_USER_AGENT)
 mp.set_property("loop-file", "inf")
 
 --https://ezremove.ai/video-watermark-remover/
-mp.commandv("loadfile", mp.command_native({ "expand-path", "~~/MpvIptv.mp4" }), "replace", 0, "start=0")
+mp.commandv("loadfile", mp.command_native({ "expand-path", "~~/MpvIptv.mp4" }), "replace", -1, "start=0")
 
 mp.commandv("script-message-to", "modernz", "osc-hide")
 

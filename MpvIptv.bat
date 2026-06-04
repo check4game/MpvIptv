@@ -3,7 +3,7 @@
 pushd %~dp0
 
 :: sync with MpvIptv version
-set useragent="MpvIptv-Updater-Script/v1.2.6"
+set useragent="MpvIptv-Updater-Script/v1.2.7"
 
 where pwsh >nul 2>nul
 if %errorlevel% equ 0 (
@@ -27,8 +27,8 @@ set curlUrl=https://curl.se/windows/dl-8.19.0_4/curl-8.19.0_4-win64-mingw.zip
 set gzipUrl=https://github.com/ebiggers/libdeflate/releases/download/v1.25/libdeflate-1.25-windows-x86_64-bin.zip
 
 :: direct link
-set mpvUrl=https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20260307/mpv-x86_64-20260307-git-f9190e5.7z
-:set mpvUrl=https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20260307/mpv-x86_64-v3-20260307-git-f9190e5.7z
+set mpvUrl=https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20260604/mpv-x86_64-20260604-git-6d5c859.7z
+:set mpvUrl=https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20260307/mpv-x86_64-20260307-git-f9190e5.7z
 
 :: repos api link
 ::set mpvApi=https://api.github.com/repos/zhongfly/mpv-winbuild/releases/latest
